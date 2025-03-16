@@ -1,7 +1,9 @@
+import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -11,16 +13,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   Future<void> _login() async {
+    String email = emailController.text.trim();
+    String password = passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      showAlert("Vui lòng nhập đầy đủ email và mật khẩu!");
+      return;
+    }
+
+    if (!EmailValidator.validate(email)) {
+      showAlert("Email không hợp lệ! Vui lòng nhập đúng định dạng.");
+      return;
+    }
+
     try {
+      List<String> signInMethods =
+      await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+
+      if (signInMethods.isEmpty) {
+        showAlert("Email chưa được đăng ký! Vui lòng kiểm tra lại.");
+        return;
+      }
+
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
-      Navigator.pushNamed(context, '/expense'); // Chuyển đến màn hình quản lý chi tiêu
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi đăng nhập: ${e.toString()}')),
-      );
+      Navigator.pushNamed(context, '/expense');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        showAlert("Mật khẩu không đúng! Vui lòng kiểm tra lại.");
+      } else {
+        showAlert("Lỗi đăng nhập: ${e.message}");
+      }
     }
   }
 
@@ -40,6 +64,49 @@ class _LoginScreenState extends State<LoginScreen> {
       print("Lỗi đăng nhập Google: $e");
       return null;
     }
+  }
+
+  void showAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline, size: 50, color: Colors.blue),
+            SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 15),
+            Divider(color: Colors.grey.shade300),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue.shade800,
+                ),
+                child: Text(
+                  "OK",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -104,9 +171,17 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 5),
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(
-                  'Quên mật khẩu?',
-                  style: TextStyle(color: Colors.blueAccent),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ForgotPasswordScreen()),
+                    );
+                  },
+                  child: Text(
+                    'Quên mật khẩu?',
+                    style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
               SizedBox(height: 10),

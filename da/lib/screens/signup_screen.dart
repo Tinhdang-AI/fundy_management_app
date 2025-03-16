@@ -1,3 +1,4 @@
+import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/gestures.dart';
@@ -15,22 +16,87 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController confirmPasswordController = TextEditingController();
 
   Future<void> _signUp() async {
-    if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mật khẩu không khớp')));
+    String name = nameController.text.trim();
+    String email = emailController.text.trim();
+    String password = passwordController.text;
+    String confirmPassword = confirmPasswordController.text;
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      showAlert("Vui lòng nhập đầy đủ thông tin!");
+      return;
+    }
+
+    if (!EmailValidator.validate(email)) {
+      showAlert("Email không hợp lệ! Vui lòng nhập đúng định dạng.");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      showAlert("Mật khẩu không khớp! Vui lòng nhập lại.");
       return;
     }
 
     try {
+      // Kiểm tra xem email đã tồn tại chưa
+      List<String> signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      if (signInMethods.isNotEmpty) {
+        showAlert("Email này đã được đăng ký! Vui lòng sử dụng email khác.");
+        return;
+      }
+
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
+
+      showAlert("Đăng ký thành công! Vui lòng đăng nhập.");
       Navigator.pushNamed(context, '/login');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi đăng ký: ${e.toString()}')),
-      );
+    } on FirebaseAuthException catch (e) {
+      showAlert("Lỗi đăng ký: ${e.message}");
     }
+  }
+
+  void showAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline, size: 50, color: Colors.blue),
+            SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 15),
+            Divider(color: Colors.grey.shade300),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue.shade800,
+                ),
+                child: Text(
+                  "OK",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<UserCredential?> signInWithGoogle() async {
