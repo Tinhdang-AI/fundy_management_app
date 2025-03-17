@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -14,6 +15,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  Future<void> _saveLoginState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+  }
 
   Future<void> _signUp() async {
     String name = nameController.text.trim();
@@ -99,10 +106,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+
   Future<UserCredential?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // Người dùng hủy đăng nhập
+      if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -110,23 +118,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
         idToken: googleAuth.idToken,
       );
 
-      return await FirebaseAuth.instance.signInWithCredential(credential);
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      await _saveLoginState();
+      return userCredential;
     } catch (e) {
       print("Lỗi đăng nhập Google: $e");
       return null;
     }
   }
 
+
   Widget _buildTextField(String hintText, TextEditingController controller, {bool isPassword = false}) {
     return TextField(
       controller: controller,
-      obscureText: isPassword,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-        suffixIcon: isPassword ? Icon(Icons.visibility_off) : null,
       ),
     );
   }
@@ -137,7 +148,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       backgroundColor: Color(0xFFFF8B55),
       body: Center(
         child: Padding(
-          padding: EdgeInsets.only(top: 150, left: 30, right: 30),
+          padding: EdgeInsets.only(top: 80, left: 30, right: 30),
           child: Column(
             children: [
               Text(
@@ -173,13 +184,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:_buildTextField('Mật khẩu', passwordController, isPassword: true),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return TextField(
+                      controller: passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Mật khẩu',
+                        filled: true,
+                        fillColor: Colors.white,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               SizedBox(height: 10),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:_buildTextField('Xác nhận lại mật khẩu', confirmPasswordController, isPassword: true),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return TextField(
+                      controller: confirmPasswordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Xác nhận lại mật khẩu',
+                        filled: true,
+                        fillColor: Colors.white,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               SizedBox(height: 20),
               Container(
@@ -200,7 +257,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -254,7 +311,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
-                          Navigator.pushNamed(context, '/login'); // Điều hướng đến trang đăng ký
+                          Navigator.pushNamed(context, '/login');
                         },
                     ),
                   ],

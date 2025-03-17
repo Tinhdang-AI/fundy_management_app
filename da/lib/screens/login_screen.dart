@@ -1,6 +1,7 @@
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'forgot_password_screen.dart';
@@ -12,6 +13,28 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginState();
+  }
+
+  Future<void> _checkLoginState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, '/expense');
+    }
+  }
+
+  Future<void> _saveLoginState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+  }
+
   Future<void> _login() async {
     String email = emailController.text.trim();
     String password = passwordController.text;
@@ -38,7 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
         email: email,
         password: password,
       );
-      Navigator.pushNamed(context, '/expense');
+      await _saveLoginState();
+      Navigator.pushReplacementNamed(context, '/expense');
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password') {
         showAlert("Mật khẩu không đúng! Vui lòng kiểm tra lại.");
@@ -51,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<UserCredential?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // Người dùng hủy đăng nhập
+      if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -59,7 +83,11 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
-      return await FirebaseAuth.instance.signInWithCredential(credential);
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      await _saveLoginState();
+      return userCredential;
     } catch (e) {
       print("Lỗi đăng nhập Google: $e");
       return null;
@@ -115,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Color(0xFFFF8B55),
       body: Center(
         child: Padding(
-          padding: EdgeInsets.only(top: 150, left: 30, right: 30),
+          padding: EdgeInsets.only(top: 125, left: 30, right: 30),
           child: Column(
             children: [
               Text(
@@ -151,23 +179,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 10),
+
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    filled: true,
-                    fillColor: Colors.white,
-                    suffixIcon: Icon(Icons.visibility_off),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return TextField(
+                      controller: passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Mật khẩu',
+                        filled: true,
+                        fillColor: Colors.white,
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
+
               SizedBox(height: 5),
               Align(
                 alignment: Alignment.centerRight,
@@ -202,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -220,14 +261,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
               SizedBox(height: 10),
               Container(
-                width: 350, // Độ rộng của ô nhập
-                height: 50, // Độ cao của ô nhập
+                width: 350,
+                height: 50,
                 child:ElevatedButton.icon(
                   onPressed: () async {
                     UserCredential? user = await signInWithGoogle();
                     if (user != null) {
-                      print("Đăng nhập thành công: ${user.user?.displayName}");
-                      Navigator.pushNamed(context, '/expense'); // Chuyển hướng sau khi đăng nhập
+                      Navigator.pushReplacementNamed(context, '/expense');
                     }
                   },
                   icon: Image.asset('assets/google_icon.png', width: 24),
