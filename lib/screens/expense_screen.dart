@@ -4,7 +4,9 @@ import '/screens/calendar_screen.dart';
 import '/screens/report_screen.dart';
 import '/screens/more_screen.dart';
 import '../services/database_service.dart';
-import '../models/expense_model.dart';
+import '/screens/search_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ExpenseScreen extends StatefulWidget {
   @override
@@ -12,26 +14,50 @@ class ExpenseScreen extends StatefulWidget {
 }
 
 class _ExpenseScreenState extends State<ExpenseScreen> {
-  int selectedTab = 0; // 0: Tiền chi, 1: Tiền thu
-  int _selectedIndex = 0; // Tab hiện tại (Nhập vào)
+  // Controllers & Services
   final DatabaseService _databaseService = DatabaseService();
-
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController noteController = TextEditingController();
   final TextEditingController amountController = TextEditingController();
+  final TextEditingController categoryNameController = TextEditingController();
 
+  // State variables
+  int selectedTab = 0; // 0: Expense, 1: Income
+  int _selectedIndex = 0; // Current tab (Input)
   DateTime selectedDate = DateTime.now();
   String selectedCategory = "";
   String selectedCategoryIcon = "";
   bool _isLoading = false;
+  bool _isEditMode = false;
+  bool _isInitialized = false;
+  IconData? selectedIconForNewCategory;
 
+  // Navigation screens
   final List<Widget> _screens = [
-    ExpenseScreen(), // Nhập vào
-    CalendarScreen(), // Lịch
-    ReportScreen(), // Báo cáo
-    MoreScreen(), // Khác
+    ExpenseScreen(),
+    CalendarScreen(),
+    ReportScreen(),
+    MoreScreen(),
   ];
 
-  final List<Map<String, dynamic>> expenseCategories = [
+  // Available icons for categories
+  final List<IconData> availableIcons = [
+    Icons.restaurant, Icons.shopping_bag, Icons.checkroom, Icons.spa,
+    Icons.wine_bar, Icons.local_hospital, Icons.school, Icons.electrical_services,
+    Icons.directions_bus, Icons.phone, Icons.home, Icons.attach_money,
+    Icons.savings, Icons.card_giftcard, Icons.trending_up, Icons.account_balance_wallet,
+    Icons.pets, Icons.theater_comedy, Icons.sports_basketball, Icons.music_note,
+    Icons.movie, Icons.flight, Icons.fitness_center, Icons.shopping_cart,
+    Icons.child_care, Icons.toys,
+  ];
+
+  // Category lists
+  List<Map<String, dynamic>> expenseCategories = [];
+  List<Map<String, dynamic>> incomeCategories = [];
+
+  // Default categories
+  final List<Map<String, dynamic>> defaultExpenseCategories = [
     {"icon": Icons.restaurant, "label": "Ăn uống"},
     {"icon": Icons.shopping_bag, "label": "Chi tiêu hàng ngày"},
     {"icon": Icons.checkroom, "label": "Quần áo"},
@@ -46,7 +72,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     {"icon": Icons.build, "label": "Chỉnh sửa"},
   ];
 
-  final List<Map<String, dynamic>> incomeCategories = [
+  final List<Map<String, dynamic>> defaultIncomeCategories = [
     {"icon": Icons.attach_money, "label": "Tiền lương"},
     {"icon": Icons.savings, "label": "Tiền phụ cấp"},
     {"icon": Icons.card_giftcard, "label": "Tiền thưởng"},
@@ -55,6 +81,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     {"icon": Icons.build, "label": "Chỉnh sửa"},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // Load categories when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCategoriesFromFirebase();
+    });
+  }
+
+  // Navigation
   void _onItemTapped(int index) {
     if (index != _selectedIndex) {
       Navigator.pushReplacement(
@@ -64,6 +100,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     }
   }
 
+  // Date picker
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -78,13 +115,22 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     }
   }
 
+  // Category selection
   void _selectCategory(String category, IconData icon) {
+    if (category == "Chỉnh sửa") {
+      setState(() {
+        _isEditMode = true;
+      });
+      return;
+    }
+
     setState(() {
       selectedCategory = category;
       selectedCategoryIcon = icon.codePoint.toString();
     });
   }
 
+  // Save expense or income entry
   Future<void> _saveExpense() async {
     if (noteController.text.isEmpty || amountController.text.isEmpty || selectedCategory.isEmpty) {
       _showMessage("Vui lòng nhập đầy đủ thông tin!");
@@ -122,8 +168,6 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         selectedCategoryIcon = "";
         _isLoading = false;
       });
-
-      _showMessage("Đã lưu thành công!");
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -138,53 +182,327 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  void _addNewCategory() {
+    if (categoryNameController.text.isEmpty || selectedIconForNewCategory == null) {
+      _showMessage("Vui lòng nhập tên danh mục và chọn biểu tượng!");
+      return;
+    }
+
+    setState(() {
+      List<Map<String, dynamic>> targetList = selectedTab == 0 ? expenseCategories : incomeCategories;
+
+      // Remove "Chỉnh sửa" entry to add it last
+      targetList.removeWhere((element) => element["label"] == "Chỉnh sửa");
+
+      // Add new category
+      targetList.add({
+        "icon": selectedIconForNewCategory,
+        "label": categoryNameController.text,
+      });
+
+      // Add "Chỉnh sửa" entry back
+      targetList.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+
+      // Reset values
+      categoryNameController.clear();
+      selectedIconForNewCategory = null;
+    });
+
+    // Save changes to Firebase
+    _saveCategoriesToFirebase();
+  }
+
+  // Delete category
+  void _deleteCategory(int index) {
+    List<Map<String, dynamic>> targetList = selectedTab == 0 ? expenseCategories : incomeCategories;
+
+    // Don't allow deleting "Chỉnh sửa" category
+    if (targetList[index]["label"] != "Chỉnh sửa") {
+      setState(() {
+        targetList.removeAt(index);
+      });
+      _saveCategoriesToFirebase();
+    }
+  }
+
+  // Save categories to Firebase
+  Future<void> _saveCategoriesToFirebase() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      String userId = currentUser.uid;
+
+      // Convert expense categories to serializable format
+      List<Map<String, dynamic>> serializableExpenseCategories = expenseCategories.map((category) {
+        return {
+          "label": category["label"],
+          "iconCode": (category["icon"] as IconData).codePoint,
+          "fontFamily": "MaterialIcons"
+        };
+      }).toList();
+
+      // Convert income categories to serializable format
+      List<Map<String, dynamic>> serializableIncomeCategories = incomeCategories.map((category) {
+        return {
+          "label": category["label"],
+          "iconCode": (category["icon"] as IconData).codePoint,
+          "fontFamily": "MaterialIcons"
+        };
+      }).toList();
+
+      // Save to Firestore
+      await _firestore.collection('users').doc(userId).set({
+        'expenseCategories': serializableExpenseCategories,
+        'incomeCategories': serializableIncomeCategories,
+        'lastUpdated': FieldValue.serverTimestamp()
+      }, SetOptions(merge: true));
+    } catch (e) {
+      _showMessage("Lỗi khi lưu danh mục: ${e.toString()}");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Save default categories for new users
+  Future<void> _saveDefaultCategoriesToFirebase() async {
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      String userId = currentUser.uid;
+
+      // Convert default expense categories to serializable format
+      List<Map<String, dynamic>> serializableExpenseCategories = defaultExpenseCategories.map((category) {
+        return {
+          "label": category["label"],
+          "iconCode": (category["icon"] as IconData).codePoint,
+          "fontFamily": "MaterialIcons"
+        };
+      }).toList();
+
+      // Convert default income categories to serializable format
+      List<Map<String, dynamic>> serializableIncomeCategories = defaultIncomeCategories.map((category) {
+        return {
+          "label": category["label"],
+          "iconCode": (category["icon"] as IconData).codePoint,
+          "fontFamily": "MaterialIcons"
+        };
+      }).toList();
+
+      // Save to Firestore
+      await _firestore.collection('users').doc(userId).set({
+        'expenseCategories': serializableExpenseCategories,
+        'incomeCategories': serializableIncomeCategories,
+        'isDefaultCategoriesSaved': true,
+        'lastUpdated': FieldValue.serverTimestamp()
+      }, SetOptions(merge: true));
+    } catch (e) {
+      _showMessage("Lỗi khi tạo danh mục mặc định: ${e.toString()}");
+    }
+  }
+
+  // Load categories from Firebase
+  Future<void> _loadCategoriesFromFirebase() async {
+    if (_isInitialized) return; // Avoid loading multiple times
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          // Use default categories if not logged in
+          expenseCategories = List.from(defaultExpenseCategories);
+          incomeCategories = List.from(defaultIncomeCategories);
+          _isLoading = false;
+          _isInitialized = true;
+        });
+        return;
+      }
+
+      String userId = currentUser.uid;
+
+      // Query data from Firestore
+      DocumentSnapshot doc = await _firestore.collection('users').doc(userId).get();
+
+      bool hasCategories = false;
+
+      if (doc.exists && doc.data() != null) {
+        Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
+
+        // Load expense categories
+        if (userData.containsKey('expenseCategories') &&
+            userData['expenseCategories'] is List &&
+            (userData['expenseCategories'] as List).isNotEmpty) {
+
+          List<dynamic> loadedExpenseCategories = userData['expenseCategories'];
+          List<Map<String, dynamic>> parsedExpenseCategories = loadedExpenseCategories.map((item) {
+            return {
+              "label": item["label"],
+              "icon": IconData(item["iconCode"], fontFamily: item["fontFamily"] ?? 'MaterialIcons')
+            };
+          }).toList();
+
+          // Ensure "Chỉnh sửa" category exists
+          if (!parsedExpenseCategories.any((element) => element["label"] == "Chỉnh sửa")) {
+            parsedExpenseCategories.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+          }
+
+          setState(() {
+            expenseCategories = parsedExpenseCategories;
+          });
+
+          hasCategories = true;
+        }
+
+        // Load income categories
+        if (userData.containsKey('incomeCategories') &&
+            userData['incomeCategories'] is List &&
+            (userData['incomeCategories'] as List).isNotEmpty) {
+
+          List<dynamic> loadedIncomeCategories = userData['incomeCategories'];
+          List<Map<String, dynamic>> parsedIncomeCategories = loadedIncomeCategories.map((item) {
+            return {
+              "label": item["label"],
+              "icon": IconData(item["iconCode"], fontFamily: item["fontFamily"] ?? 'MaterialIcons')
+            };
+          }).toList();
+
+          // Ensure "Chỉnh sửa" category exists
+          if (!parsedIncomeCategories.any((element) => element["label"] == "Chỉnh sửa")) {
+            parsedIncomeCategories.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+          }
+
+          setState(() {
+            incomeCategories = parsedIncomeCategories;
+          });
+
+          hasCategories = true;
+        }
+      }
+
+      // If user has no categories, use default ones and save to Firebase
+      if (!hasCategories) {
+        setState(() {
+          expenseCategories = List.from(defaultExpenseCategories);
+          incomeCategories = List.from(defaultIncomeCategories);
+        });
+
+        await _saveDefaultCategoriesToFirebase();
+      }
+
+      _isInitialized = true;
+    } catch (e) {
+      // Use default categories in case of error
+      setState(() {
+        expenseCategories = List.from(defaultExpenseCategories);
+        incomeCategories = List.from(defaultIncomeCategories);
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Show icon selector dialog
+  void _showIconSelector() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Chọn icon"),
+          content: Container(
+            width: double.maxFinite,
+            height: 300,
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: availableIcons.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedIconForNewCategory = availableIcons[index];
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(availableIcons[index], size: 30),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Hủy"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _buildBottomNavigationBar(),
-      body: SafeArea(
+      floatingActionButton: _isEditMode ? FloatingActionButton(
+        backgroundColor: Colors.orange,
+        child: Icon(Icons.check, color: Colors.white),
+        onPressed: () {
+          _saveCategoriesToFirebase();
+          setState(() {
+            _isEditMode = false;
+          });
+        },
+      ) : null,
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Colors.orange))
+          : SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildToggleTab(),
+              if (!_isEditMode) _buildToggleTab(),
               SizedBox(height: 10),
-              _buildDateField(),
+              if (!_isEditMode) _buildDateSelector(),
               SizedBox(height: 10),
-              TextField(
-                controller: noteController,
-                decoration: InputDecoration(
-                  hintText: "Ghi chú",
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                ),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: "Tiền ${selectedTab == 0 ? 'chi' : 'thu'}",
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                ),
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Danh mục", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  selectedCategory.isNotEmpty
-                      ? Text(selectedCategory, style: TextStyle(color: Colors.orange))
-                      : SizedBox(),
-                ],
-              ),
-              SizedBox(height: 10),
-              Expanded(child: _buildCategoryGrid()),
+              if (!_isEditMode) _buildExpenseFields(),
+              if (!_isEditMode) SizedBox(height: 10),
+              if (_isEditMode)
+                _buildCategoryEditor()
+              else
+                expenseCategories.isEmpty || incomeCategories.isEmpty
+                    ? Center(child: Text("Đang tải danh mục..."))
+                    : Expanded(child: _buildCategoryGrid()),
               SizedBox(height: 20),
-              _buildSubmitButton(),
+              if (!_isEditMode) _buildSubmitButton(),
             ],
           ),
         ),
@@ -192,6 +510,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  // UI Components
   Widget _buildToggleTab() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -202,7 +521,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           SizedBox(width: 8),
           _buildTabButton("Tiền thu", 1),
           SizedBox(width: 8),
-          Icon(Icons.edit, color: Colors.orange),
+          IconButton(
+            icon: Icon(Icons.search, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchScreen()),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -216,9 +543,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         onTap: () {
           setState(() {
             selectedTab = index;
+            _isEditMode = false; // Turn off edit mode when switching tabs
           });
-          // Tải lại dữ liệu nếu cần
-          // _loadReportData();
         },
         child: Container(
           alignment: Alignment.center,
@@ -239,24 +565,192 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget _buildDateField() {
-    return GestureDetector(
-      onTap: () => _selectDate(context),
+  Widget _buildDateSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          Icon(Icons.calendar_today, color: Colors.orange),
-          SizedBox(width: 10),
+          Text(
+            "Ngày",
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.chevron_left, color: Color(0xFFFFAE88)),
+            onPressed: () {
+              setState(() {
+                selectedDate = selectedDate.subtract(Duration(days: 1));
+              });
+            },
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
+            iconSize: 20,
+          ),
           Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
+            child: GestureDetector(
+              onTap: () => _selectDate(context),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Color(0xFFFFAE88),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Center(
+                  child: Text(
+                    DateFormat('dd/MM/yyyy (E)').format(selectedDate),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-              child: Text(
-                DateFormat('dd/MM/yyyy (E)').format(selectedDate),
-                style: TextStyle(fontSize: 16),
-              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.chevron_right, color: Color(0xFFFFAE88)),
+            onPressed: () {
+              setState(() {
+                selectedDate = selectedDate.add(Duration(days: 1));
+              });
+            },
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
+            iconSize: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpenseFields() {
+    return Column(
+      children: [
+        TextField(
+          controller: noteController,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: "Ghi chú",
+          ),
+        ),
+        SizedBox(height: 12),
+        TextField(
+          controller: amountController,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.right,
+          style: TextStyle(fontSize: 20),
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: "0",
+            suffixText: "đ",
+            labelText: "Tiền ${selectedTab == 0 ? 'chi' : 'thu'}",
+          ),
+        ),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Danh mục", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            selectedCategory.isNotEmpty
+                ? Text(selectedCategory, style: TextStyle(color: Colors.orange))
+                : SizedBox(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryEditor() {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Chỉnh sửa danh mục ${selectedTab == 0 ? 'Chi tiêu' : 'Thu nhập'}",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 16),
+          // Form to add new category
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Thêm danh mục mới", style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: categoryNameController,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Tên danh mục",
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _showIconSelector,
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: selectedIconForNewCategory != null
+                            ? Icon(selectedIconForNewCategory, size: 30)
+                            : Icon(Icons.add, size: 30),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _addNewCategory,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text("Thêm", style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          Text("Danh sách danh mục hiện tại:", style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          // Current category list
+          Expanded(
+            child: ListView.builder(
+              itemCount: selectedTab == 0
+                  ? expenseCategories.length
+                  : incomeCategories.length,
+              itemBuilder: (context, index) {
+                final category = selectedTab == 0
+                    ? expenseCategories[index]
+                    : incomeCategories[index];
+                bool isEditCategory = category["label"] == "Chỉnh sửa";
+
+                return ListTile(
+                  leading: Icon(category["icon"], size: 30),
+                  title: Text(category["label"]),
+                  trailing: isEditCategory
+                      ? null
+                      : IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteCategory(index),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -275,6 +769,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
+        bool isSelected = selectedCategory == categories[index]["label"];
+        bool isEditButton = categories[index]["label"] == "Chỉnh sửa";
+
         return GestureDetector(
           onTap: () => _selectCategory(
             categories[index]["label"],
@@ -283,10 +780,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: selectedCategory == categories[index]["label"]
-                    ? Colors.orange
-                    : Colors.transparent,
-                width: 2,
+                color: isSelected ? Colors.orange : Colors.grey.shade300,
+                width: isSelected ? 2 : 1,
               ),
               borderRadius: BorderRadius.circular(10),
             ),
@@ -296,9 +791,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 Icon(
                   categories[index]["icon"],
                   size: 40,
-                  color: selectedCategory == categories[index]["label"]
-                      ? Colors.orange
-                      : Colors.grey,
+                  color: isSelected || isEditButton ? Colors.orange : Colors.grey,
                 ),
                 SizedBox(height: 5),
                 Text(
@@ -306,9 +799,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: selectedCategory == categories[index]["label"]
-                        ? Colors.orange
-                        : Colors.black,
+                    color: isSelected || isEditButton ? Colors.orange : Colors.black,
                   ),
                 ),
               ],
