@@ -11,6 +11,8 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _editNoteController = TextEditingController();
+  final TextEditingController _editAmountController = TextEditingController();
   List<ExpenseModel> _searchResults = [];
   List<ExpenseModel> _allExpenses = []; // Store all expenses for filtering
   bool _isSearching = false;
@@ -40,6 +42,8 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _editNoteController.dispose();
+    _editAmountController.dispose();
     super.dispose();
   }
 
@@ -75,7 +79,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _searchResults = [];
         _allExpenses = [];
       });
-      _showErrorMessage("Không thể tải danh sách giao dịch. Vui lòng thử lại sau.");
+      _showMessage("Không thể tải danh sách giao dịch. Vui lòng thử lại sau.", isError: true);
     }
   }
 
@@ -133,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _isSearching = false;
       });
-      _showErrorMessage("Lỗi khi lọc dữ liệu. Vui lòng thử lại.");
+      _showMessage("Lỗi khi lọc dữ liệu. Vui lòng thử lại.", isError: true);
     }
   }
 
@@ -174,6 +178,240 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  // Delete expense
+  Future<void> _deleteExpense(ExpenseModel expense) async {
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      await _databaseService.deleteExpense(expense.id);
+
+      setState(() {
+        _allExpenses.removeWhere((item) => item.id == expense.id);
+        _searchResults.removeWhere((item) => item.id == expense.id);
+        _isSearching = false;
+      });
+
+      _calculateTotals();
+      _showMessage("Đã xóa giao dịch thành công");
+    } catch (e) {
+      print("Error deleting expense: $e");
+      setState(() {
+        _isSearching = false;
+      });
+      _showMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.", isError: true);
+    }
+  }
+
+  // Edit/rename expense
+  Future<void> _editExpense(ExpenseModel expense) async {
+    // First, show dialog to edit
+    final bool? result = await _showEditDialog(expense);
+
+    if (result != true) {
+      return; // User cancelled
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      // Get the updated values from the dialog
+      final double amount = double.tryParse(_editAmountController.text.replaceAll(',', '')) ?? expense.amount;
+      final String note = _editNoteController.text.trim();
+
+      // Only update if something changed
+      if (amount != expense.amount || note != expense.note) {
+        await _databaseService.updateExpense(
+            ExpenseModel(
+              id: expense.id,
+              userId: expense.userId,
+              note: note,
+              amount: amount,
+              category: expense.category,
+              categoryIcon: expense.categoryIcon,
+              date: expense.date,
+              isExpense: expense.isExpense,
+            )
+        );
+
+        // Update local lists
+        final updatedExpense = ExpenseModel(
+          id: expense.id,
+          userId: expense.userId,
+          note: note,
+          amount: amount,
+          category: expense.category,
+          categoryIcon: expense.categoryIcon,
+          date: expense.date,
+          isExpense: expense.isExpense,
+        );
+
+        setState(() {
+          final allIndex = _allExpenses.indexWhere((item) => item.id == expense.id);
+          if (allIndex >= 0) {
+            _allExpenses[allIndex] = updatedExpense;
+          }
+
+          final searchIndex = _searchResults.indexWhere((item) => item.id == expense.id);
+          if (searchIndex >= 0) {
+            _searchResults[searchIndex] = updatedExpense;
+          }
+        });
+
+        _calculateTotals();
+        _showMessage("Đã cập nhật giao dịch thành công");
+      }
+    } catch (e) {
+      print("Error updating expense: $e");
+      _showMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.", isError: true);
+    } finally {
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  // Show edit dialog
+  Future<bool?> _showEditDialog(ExpenseModel expense) {
+    // Initialize controllers with current values
+    _editNoteController.text = expense.note;
+    _editAmountController.text = expense.amount.toString();
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Chỉnh sửa giao dịch'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Danh mục: ${expense.category}', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              TextField(
+                controller: _editNoteController,
+                decoration: InputDecoration(
+                  labelText: 'Ghi chú',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _editAmountController,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Số tiền',
+                  border: OutlineInputBorder(),
+                  suffix: Text('đ'),
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Ngày: ${DateFormat('dd/MM/yyyy').format(expense.date)}',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Validate input
+              if (_editNoteController.text.trim().isEmpty) {
+                _showMessage("Ghi chú không được để trống", isError: true);
+                return;
+              }
+
+              final amount = double.tryParse(
+                  _editAmountController.text.replaceAll(',', '')
+              );
+
+              if (amount == null || amount <= 0) {
+                _showMessage("Số tiền không hợp lệ", isError: true);
+                return;
+              }
+
+              Navigator.pop(context, true);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show confirmation dialog for delete
+  Future<bool?> _showDeleteConfirmation(ExpenseModel expense) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Xác nhận xóa'),
+        content: Text(
+            'Bạn có chắc chắn muốn xóa khoản ${expense.isExpense ? "chi" : "thu"} "${expense.note}" với số tiền ${NumberFormat('#,###', 'vi_VN').format(expense.amount)}đ không?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show action menu on long press
+  void _showActionMenu(BuildContext context, ExpenseModel expense) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                leading: Icon(Icons.edit, color: Colors.orange),
+                title: Text('Chỉnh sửa giao dịch'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editExpense(expense);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Xóa giao dịch'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final confirm = await _showDeleteConfirmation(expense);
+                  if (confirm == true) {
+                    _deleteExpense(expense);
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.close),
+                title: Text('Hủy'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Select date range
   Future<void> _selectDateRange(BuildContext context) async {
     DateTimeRange? picked = await showDateRangePicker(
@@ -207,11 +445,11 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _showErrorMessage(String message) {
+  void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: isError ? Colors.red : Colors.green,
       ),
     );
   }
@@ -513,34 +751,38 @@ class _SearchScreenState extends State<SearchScreen> {
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: ListTile(
-            leading: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onLongPress: () => _showActionMenu(context, item),
+            borderRadius: BorderRadius.circular(12),
+            child: ListTile(
+              leading: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _buildCategoryIcon(item),
               ),
-              child: _buildCategoryIcon(item),
-            ),
-            title: Text(
-              item.category,
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.note),
-                Text(DateFormat('dd/MM/yyyy').format(item.date)),
-              ],
-            ),
-            trailing: Text(
-              '${formatCurrency.format(item.amount)} đ',
-              style: TextStyle(
-                color: item.isExpense ? Colors.red : Colors.green,
-                fontWeight: FontWeight.bold,
+              title: Text(
+                item.category,
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.note),
+                  Text(DateFormat('dd/MM/yyyy').format(item.date)),
+                ],
+              ),
+              trailing: Text(
+                '${formatCurrency.format(item.amount)} đ',
+                style: TextStyle(
+                  color: item.isExpense ? Colors.red : Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              isThreeLine: true,
             ),
-            isThreeLine: true,
           ),
         );
       },
