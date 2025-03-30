@@ -372,9 +372,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
               if (isSelected) {
                 textColor = Colors.white;
-                backgroundColor = Colors.grey;
-              } else if (isToday) {
                 backgroundColor = Colors.orange.shade100;
+              } else if (isToday) {
+                backgroundColor = Colors.grey.shade200;
               }
 
               return Expanded(
