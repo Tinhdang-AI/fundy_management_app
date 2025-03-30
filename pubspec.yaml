@@ -9,6 +9,8 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
+  image_picker: ^1.1.2
+  package_info_plus: ^8.3.0
   table_calendar: ^3.2.0
   shared_preferences: ^2.0.1
   firebase_auth: ^5.5.1
@@ -25,7 +27,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
 
   flutter_lints: ^5.0.0
 
