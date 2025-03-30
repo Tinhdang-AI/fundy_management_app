@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/database_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -16,6 +17,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  final DatabaseService _databaseService = DatabaseService();
 
   Future<void> _saveLoginState() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -43,27 +46,97 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    try {
-      // Kiểm tra xem email đã tồn tại chưa
-      List<String> signInMethods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-      if (signInMethods.isNotEmpty) {
-        showAlert("Email này đã được đăng ký! Vui lòng sử dụng email khác.");
-        return;
-      }
+    if (password.length < 6) {
+      showAlert("Mật khẩu phải có ít nhất 6 ký tự!");
+      return;
+    }
 
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Tạo tài khoản
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      showAlert("Đăng ký thành công! Vui lòng đăng nhập.");
-      Navigator.pushNamed(context, '/login');
+      // Cập nhật tên hiển thị
+      await userCredential.user?.updateDisplayName(name);
+
+      // Lưu thông tin người dùng vào Firestore
+      await _databaseService.saveUserInfo(name, email);
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      showAlert("Đăng ký thành công! Vui lòng đăng nhập.", onOk: () {
+        Navigator.pushNamed(context, '/login');
+      });
     } on FirebaseAuthException catch (e) {
-      showAlert("Lỗi đăng ký: ${e.message}");
+      setState(() {
+        _isLoading = false;
+      });
+      showAlert("Email này đã được đăng ký! Vui lòng sử dụng email khác.");
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      showAlert("Lỗi không xác định: ${e.toString()}");
     }
   }
 
-  void showAlert(String message) {
+  Future<UserCredential?> signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await GoogleSignIn().signOut();
+
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      User? user = userCredential.user;
+      if (user != null) {
+        // Lưu thông tin người dùng vào Firestore nếu đây là lần đầu đăng nhập
+        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+          await _databaseService.saveUserInfo(
+            user.displayName ?? "Người dùng Google",
+            user.email ?? "",
+          );
+        }
+      }
+
+      await _saveLoginState();
+      return userCredential;
+    } catch (e) {
+      print("Lỗi đăng nhập Google: $e");
+      return null;
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void showAlert(String message, {VoidCallback? onOk}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -90,7 +163,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (onOk != null) {
+                    onOk();
+                  }
+                },
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.blue.shade800,
                 ),
@@ -106,47 +184,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null;
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
-
-      await _saveLoginState();
-      return userCredential;
-    } catch (e) {
-      print("Lỗi đăng nhập Google: $e");
-      return null;
-    }
-  }
-
-
   Widget _buildTextField(String hintText, TextEditingController controller, {bool isPassword = false}) {
     return TextField(
       controller: controller,
+      obscureText: isPassword && _obscurePassword,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+        )
+            : null,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Color(0xFFFF8B55),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Color(0xFFFF8B55),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(top: 80, left: 30, right: 30),
           child: Column(
@@ -171,78 +245,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:_buildTextField('Họ và Tên', nameController),
-
+                child: _buildTextField('Họ và Tên', nameController),
               ),
               SizedBox(height: 10),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:_buildTextField('Email', emailController),
+                child: _buildTextField('Email', emailController),
               ),
               SizedBox(height: 10),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child: StatefulBuilder(
-                  builder: (context, setState) {
-                    return TextField(
-                      controller: passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        hintText: 'Mật khẩu',
-                        filled: true,
-                        fillColor: Colors.white,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                child: _buildTextField('Mật khẩu', passwordController, isPassword: true),
               ),
               SizedBox(height: 10),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child: StatefulBuilder(
-                  builder: (context, setState) {
-                    return TextField(
-                      controller: confirmPasswordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        hintText: 'Xác nhận lại mật khẩu',
-                        filled: true,
-                        fillColor: Colors.white,
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                child: _buildTextField('Xác nhận lại mật khẩu', confirmPasswordController, isPassword: true),
               ),
               SizedBox(height: 20),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:ElevatedButton(
+                child: ElevatedButton(
                   onPressed: _signUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -271,16 +298,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     child: Divider(color: Colors.black, thickness: 2), // Đường kẻ bên phải
                   ),
                 ],
-              ),              SizedBox(height: 10),
+              ),
+              SizedBox(height: 10),
               Container(
                 width: 350, // Độ rộng của ô nhập
                 height: 50, // Độ cao của ô nhập
-                child:ElevatedButton.icon(
+                child: ElevatedButton.icon(
                   onPressed: () async {
                     UserCredential? user = await signInWithGoogle();
                     if (user != null) {
-                      print("Đăng ký thành công: ${user.user?.displayName}");
-                      Navigator.pushNamed(context, '/expense'); // Chuyển hướng sau khi đăng ký thành công
+                      Navigator.pushReplacementNamed(context, '/expense'); // Chuyển hướng sau khi đăng ký thành công
                     }
                   },
                   icon: Image.asset('assets/google_icon.png', width: 24),
@@ -317,6 +344,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ],
                 ),
               ),
+              SizedBox(height: 20),
             ],
           ),
         ),
