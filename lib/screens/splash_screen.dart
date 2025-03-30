@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:da/screens/login_screen.dart';
+import 'package:fundy/screens/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,15 +23,6 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     });
   }
-
-  // @override
-  // void dispose() {
-  //   SystemChrome.setEnabledSystemUIMode(
-  //     SystemUiMode.manual,
-  //     overlays: SystemUiOverlay.values,
-  //   );
-  //   super.dispose();
-  // }
 
   @override
   Widget build(BuildContext context) {
