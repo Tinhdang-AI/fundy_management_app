@@ -324,7 +324,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               );
             },
             icon: Icon(Icons.add),
-            label: Text('Thêm giao dịch đầu tiên'),
+            label: Text('Thêm giao dịch'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
