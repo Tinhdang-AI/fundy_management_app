@@ -352,12 +352,6 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
             );
           },
         ),
-        // Add refresh button
-        IconButton(
-          icon: Icon(Icons.refresh, color: Colors.black),
-          onPressed: _loadReportData,
-          tooltip: 'Tải lại dữ liệu',
-        ),
       ],
     );
   }

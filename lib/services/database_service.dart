@@ -92,39 +92,6 @@ class DatabaseService {
     }
   }
 
-  // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một ngày cụ thể
-  Stream<List<ExpenseModel>> getExpensesByDate(DateTime date) {
-    if (currentUserId == null) {
-      return Stream.value([]);
-    }
-
-    // Sử dụng UTC để tránh vấn đề múi giờ
-    DateTime startDate = DateTime(date.year, date.month, date.day);
-    DateTime endDate = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
-
-    print("Stream: Fetching expenses from ${startDate.toString()} to ${endDate.toString()}");
-
-    try {
-      return expensesCollection
-          .where('userId', isEqualTo: currentUserId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
-          .orderBy('date', descending: true)
-          .snapshots()
-          .map((snapshot) {
-        List<ExpenseModel> expenses = snapshot.docs
-            .map((doc) => ExpenseModel.fromFirestore(doc))
-            .toList();
-
-        print("Stream: Found ${expenses.length} expenses for date ${date.toString()}");
-        return expenses;
-      });
-    } catch (e) {
-      print("Error in getExpensesByDate: $e");
-      return Stream.value([]);
-    }
-  }
-
   // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một ngày cụ thể (Future)
   Future<List<ExpenseModel>> getExpensesByDateFuture(DateTime date) async {
     if (currentUserId == null) {
@@ -204,41 +171,6 @@ class DatabaseService {
         return [];
       }
     }
-  }
-
-  // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một tháng cụ thể
-  Stream<List<ExpenseModel>> getExpensesByMonth(int month, int year) {
-    if (currentUserId == null) {
-      return Stream.value([]);
-    }
-
-    // Sử dụng UTC để tránh vấn đề múi giờ
-    DateTime startDate = DateTime(year, month, 1);
-    DateTime endDate = (month < 12)
-        ? DateTime(year, month + 1, 1).subtract(Duration(seconds: 1))
-        : DateTime(year + 1, 1, 1).subtract(Duration(seconds: 1));
-
-    print("Stream: Fetching monthly expenses from ${startDate.toString()} to ${endDate.toString()}");
-
-    return expensesCollection
-        .where('userId', isEqualTo: currentUserId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      List<ExpenseModel> expenses = snapshot.docs
-          .map((doc) => ExpenseModel.fromFirestore(doc))
-          .toList();
-
-      print("Stream: Found ${expenses.length} expenses for month $month/$year");
-      return expenses;
-    })
-        .timeout(Duration(seconds: 15), onTimeout: (sink) {
-      // Trả về danh sách rỗng nếu timeout
-      print("Timeout getting expenses for month $month/$year");
-      sink.add([]);
-    });
   }
 
   // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một tháng cụ thể (Future)

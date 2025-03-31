@@ -11,7 +11,6 @@ import '/screens/calendar_screen.dart';
 import '/screens/report_screen.dart';
 import '/screens/search_screen.dart';
 import '../services/database_service.dart';
-import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -28,7 +27,7 @@ class _MoreScreenState extends State<MoreScreen> {
   String _userJoinDate = '';
   String _profileImageUrl = '';
 
-  // Thống kê người dùng
+  // User statistics
   int _totalTransactions = 0;
   int _monthTransactions = 0;
   double _totalBalance = 0;
@@ -58,7 +57,7 @@ class _MoreScreenState extends State<MoreScreen> {
         _appVersion = packageInfo.version;
       });
     } catch (e) {
-      print("Error loading app info: $e");
+      // Silent error handling
     }
   }
 
@@ -70,7 +69,6 @@ class _MoreScreenState extends State<MoreScreen> {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // Get user metadata from Firestore if available
         try {
           DocumentSnapshot userDoc = await FirebaseFirestore.instance
               .collection('users')
@@ -96,7 +94,7 @@ class _MoreScreenState extends State<MoreScreen> {
             });
           }
         } catch (e) {
-          print("Error loading Firestore user data: $e");
+          // Silent error handling
         }
 
         // Use Firebase Auth data as fallback
@@ -120,7 +118,6 @@ class _MoreScreenState extends State<MoreScreen> {
         });
       }
     } catch (e) {
-      print("Error loading user info: $e");
       setState(() {
         _isLoading = false;
       });
@@ -129,18 +126,13 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Future<void> _loadUserStats() async {
     try {
-      // Get current month/year
       final now = DateTime.now();
       final currentMonth = now.month;
       final currentYear = now.year;
 
-      // Get all transactions
       final allTransactions = await _databaseService.getUserExpenses().first;
-
-      // Get this month's transactions
       final monthTransactions = await _databaseService.getExpensesByMonthFuture(currentMonth, currentYear);
 
-      // Calculate totals
       double totalIncome = 0;
       double totalExpense = 0;
 
@@ -158,7 +150,7 @@ class _MoreScreenState extends State<MoreScreen> {
         _totalBalance = totalIncome - totalExpense;
       });
     } catch (e) {
-      print("Error loading user stats: $e");
+      // Silent error handling
     }
   }
 
@@ -174,12 +166,11 @@ class _MoreScreenState extends State<MoreScreen> {
 
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
-      print("Error logging out: $e");
       setState(() {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi đăng xuất: ${e.toString()}")),
+        SnackBar(content: Text("Lỗi đăng xuất")),
       );
     }
   }
@@ -209,22 +200,18 @@ class _MoreScreenState extends State<MoreScreen> {
       });
 
       try {
-        // Get current user
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // Delete all expenses for the user
           QuerySnapshot expensesSnapshot = await FirebaseFirestore.instance
               .collection('expenses')
               .where('userId', isEqualTo: user.uid)
               .get();
 
-          // Use a batch to delete all expenses
           WriteBatch batch = FirebaseFirestore.instance.batch();
           for (var doc in expensesSnapshot.docs) {
             batch.delete(doc.reference);
           }
 
-          // Commit the batch
           await batch.commit();
 
           setState(() {
@@ -234,7 +221,6 @@ class _MoreScreenState extends State<MoreScreen> {
             _totalBalance = 0;
           });
 
-          // Reload stats
           _loadUserStats();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -244,19 +230,11 @@ class _MoreScreenState extends State<MoreScreen> {
           setState(() {
             _isLoading = false;
           });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Không tìm thấy người dùng")),
-          );
         }
       } catch (e) {
         setState(() {
           _isLoading = false;
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi đặt lại ứng dụng: ${e.toString()}")),
-        );
       }
     }
   }
@@ -275,20 +253,14 @@ class _MoreScreenState extends State<MoreScreen> {
           _isLoading = true;
         });
 
-        // Read the image file
         File imageFile = File(image.path);
         List<int> imageBytes = await imageFile.readAsBytes();
-
-        // Convert the image to base64 string
         String base64Image = base64Encode(imageBytes);
 
-        // Upload image to Firestore
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // Create a unique ID for the image
           String imageId = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}';
 
-          // Create image document in Firestore
           await FirebaseFirestore.instance
               .collection('user_images')
               .doc(imageId)
@@ -298,13 +270,11 @@ class _MoreScreenState extends State<MoreScreen> {
             'timestamp': FieldValue.serverTimestamp(),
           });
 
-          // Update in Firestore user document - store just the image ID
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
               .update({'profileImageUrl': imageId});
 
-          // Update local state
           setState(() {
             _profileImageUrl = imageId;
             _isLoading = false;
@@ -323,10 +293,6 @@ class _MoreScreenState extends State<MoreScreen> {
       setState(() {
         _isLoading = false;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi cập nhật ảnh đại diện: ${e.toString()}")),
-      );
     }
   }
 
@@ -344,7 +310,6 @@ class _MoreScreenState extends State<MoreScreen> {
               onTap: () async {
                 Navigator.pop(context);
                 await _pickImage();
-                // Re-open dialog after image picker
                 _updateUserProfile();
               },
               child: Stack(
@@ -396,10 +361,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 try {
                   User? user = FirebaseAuth.instance.currentUser;
                   if (user != null) {
-                    // Update display name in Firebase Auth
                     await user.updateDisplayName(newName);
-
-                    // Update in Firestore if available
                     await FirebaseFirestore.instance
                         .collection('users')
                         .doc(user.uid)
@@ -418,10 +380,6 @@ class _MoreScreenState extends State<MoreScreen> {
                   setState(() {
                     _isLoading = false;
                   });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Lỗi cập nhật thông tin: ${e.toString()}")),
-                  );
                 }
               }
             },
@@ -433,16 +391,13 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Widget _buildProfileAvatar({required double radius}) {
-    // This will track if we have an image from Firestore
     bool hasImageFromFirestore = _profileImageUrl.isNotEmpty &&
-        !_profileImageUrl.startsWith('http'); // Assume non-http URLs are our image IDs
+        !_profileImageUrl.startsWith('http');
 
-    // Handle regular network images (for backward compatibility)
     bool hasNetworkImage = _profileImageUrl.isNotEmpty &&
         _profileImageUrl.startsWith('http');
 
     if (hasImageFromFirestore) {
-      // If we have a Firestore image ID
       return FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
             .collection('user_images')
@@ -463,12 +418,10 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             );
           } else if (snapshot.hasData && snapshot.data!.exists) {
-            // Get the base64 image data
             Map<String, dynamic>? data = snapshot.data!.data() as Map<String, dynamic>?;
             String? base64Image = data?['imageData'] as String?;
 
             if (base64Image != null) {
-              // Convert base64 to image
               return CircleAvatar(
                 radius: radius,
                 backgroundColor: Colors.orange.shade200,
@@ -479,48 +432,35 @@ class _MoreScreenState extends State<MoreScreen> {
             }
           }
 
-          // Fallback for errors or missing data
-          return CircleAvatar(
-            radius: radius,
-            backgroundColor: Colors.orange.shade200,
-            child: Text(
-              _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
-              style: TextStyle(
-                fontSize: radius * 0.8,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          );
+          return _buildDefaultAvatar(radius);
         },
       );
     } else if (hasNetworkImage) {
-      // Regular network image - likely from Firebase Storage in older versions
       return CircleAvatar(
         radius: radius,
         backgroundColor: Colors.orange.shade200,
         backgroundImage: NetworkImage(_profileImageUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          // Handle network image loading errors
-          print("Error loading network image: $exception");
-        },
+        onBackgroundImageError: (_, __) {},
         child: null,
       );
     } else {
-      // No image, display the first letter of the name
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: Colors.orange.shade200,
-        child: Text(
-          _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
-          style: TextStyle(
-            fontSize: radius * 0.8,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      );
+      return _buildDefaultAvatar(radius);
     }
+  }
+
+  Widget _buildDefaultAvatar(double radius) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.orange.shade200,
+      child: Text(
+        _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+        style: TextStyle(
+          fontSize: radius * 0.8,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -667,47 +607,6 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon, {Color? valueColor}) {
-    // Nếu là tổng số dư, định dạng lại giá trị
-    if (label == 'Tổng số dư' && value.contains('đ')) {
-      // Chỉ định dạng nếu giá trị chứa đơn vị tiền tệ
-      try {
-        // Xử lý dấu cộng/trừ ở đầu
-        bool isNegative = value.contains('-');
-        String numericPart = value.replaceAll('+', '').replaceAll('-', '').replaceAll('đ', '');
-        double amount = double.parse(numericPart);
-
-        String formattedValue = isNegative
-            ? '-${formatCurrencyWithSymbol(amount)}'
-            : '+${formatCurrencyWithSymbol(amount)}';
-
-        return Column(
-          children: [
-            Icon(icon, color: Colors.orange, size: 20),
-            SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              formattedValue,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: valueColor,
-              ),
-            ),
-          ],
-        );
-      } catch (e) {
-        // Nếu có lỗi khi định dạng, giữ nguyên giá trị gốc
-        print("Error formatting balance: $e");
-      }
-    }
-
-    // Giá trị mặc định cho các mục không phải số dư
     return Column(
       children: [
         Icon(icon, color: Colors.orange, size: 20),
@@ -730,7 +629,6 @@ class _MoreScreenState extends State<MoreScreen> {
       ],
     );
   }
-
 
   Widget _buildMenuList() {
     return ListView(
@@ -810,10 +708,6 @@ class _MoreScreenState extends State<MoreScreen> {
                   setState(() {
                     _isLoading = false;
                   });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Lỗi gửi phản hồi: ${e.toString()}")),
-                  );
                 }
               }
             },
@@ -828,71 +722,108 @@ class _MoreScreenState extends State<MoreScreen> {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
-    bool _obscureText1 = true;
-    bool _obscureText2 = true;
-    bool _obscureText3 = true;
+    bool isChangingPassword = false;
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        bool obscureText1 = true;
+        bool obscureText2 = true;
+        bool obscureText3 = true;
+
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
               title: Text("Đổi mật khẩu"),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
-                      controller: currentPasswordController,
-                      obscureText: _obscureText1,
-                      decoration: InputDecoration(
-                        labelText: "Mật khẩu hiện tại",
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureText1 ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscureText1 = !_obscureText1),
+                    if (isChangingPassword)
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: Colors.orange),
+                              SizedBox(height: 16),
+                              Text("Đang xử lý...", style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
                         ),
+                      )
+                    else
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: currentPasswordController,
+                            obscureText: obscureText1,
+                            decoration: InputDecoration(
+                              labelText: "Mật khẩu hiện tại",
+                              border: OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: Icon(obscureText1 ? Icons.visibility : Icons.visibility_off),
+                                onPressed: () => setDialogState(() => obscureText1 = !obscureText1),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          TextField(
+                            controller: newPasswordController,
+                            obscureText: obscureText2,
+                            decoration: InputDecoration(
+                              labelText: "Mật khẩu mới",
+                              border: OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: Icon(obscureText2 ? Icons.visibility : Icons.visibility_off),
+                                onPressed: () => setDialogState(() => obscureText2 = !obscureText2),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          TextField(
+                            controller: confirmPasswordController,
+                            obscureText: obscureText3,
+                            decoration: InputDecoration(
+                              labelText: "Xác nhận mật khẩu",
+                              border: OutlineInputBorder(),
+                              suffixIcon: IconButton(
+                                icon: Icon(obscureText3 ? Icons.visibility : Icons.visibility_off),
+                                onPressed: () => setDialogState(() => obscureText3 = !obscureText3),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      controller: newPasswordController,
-                      obscureText: _obscureText2,
-                      decoration: InputDecoration(
-                        labelText: "Mật khẩu mới",
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureText2 ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscureText2 = !_obscureText2),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextField(
-                      controller: confirmPasswordController,
-                      obscureText: _obscureText3,
-                      decoration: InputDecoration(
-                        labelText: "Xác nhận mật khẩu",
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureText3 ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscureText3 = !_obscureText3),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
-              actions: [
+              actions: isChangingPassword ? [] : [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: Text("Hủy"),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () async {
-                    if (currentPasswordController.text.isEmpty ||
-                        newPasswordController.text.isEmpty ||
-                        confirmPasswordController.text.isEmpty) {
+                    if (currentPasswordController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Vui lòng điền đầy đủ thông tin")),
+                        SnackBar(content: Text("Vui lòng nhập mật khẩu hiện tại")),
+                      );
+                      return;
+                    }
+
+                    if (newPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Vui lòng nhập mật khẩu mới")),
+                      );
+                      return;
+                    }
+
+                    if (confirmPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Vui lòng xác nhận mật khẩu mới")),
                       );
                       return;
                     }
@@ -904,30 +835,78 @@ class _MoreScreenState extends State<MoreScreen> {
                       return;
                     }
 
-                    Navigator.pop(context);
+                    if (newPasswordController.text.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Mật khẩu mới phải có ít nhất 6 ký tự")),
+                      );
+                      return;
+                    }
+
+                    if (currentPasswordController.text == newPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Mật khẩu mới không được giống mật khẩu hiện tại"),
+                        ),
+                      );
+                      return;
+                    }
+
+                    setDialogState(() {
+                      isChangingPassword = true;
+                    });
 
                     try {
                       User? user = FirebaseAuth.instance.currentUser;
                       if (user != null && user.email != null) {
-                        // Reauthenticate user
-                        AuthCredential credential = EmailAuthProvider.credential(
-                          email: user.email!,
-                          password: currentPasswordController.text,
-                        );
+                        String email = user.email!;
+                        String currentPassword = currentPasswordController.text;
+                        String newPassword = newPasswordController.text;
 
-                        await user.reauthenticateWithCredential(credential);
-                        await user.updatePassword(newPasswordController.text);
+                        try {
+                          AuthCredential credential = EmailAuthProvider.credential(
+                              email: email,
+                              password: currentPassword
+                          );
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Đổi mật khẩu thành công")),
-                        );
+                          UserCredential result = await user.reauthenticateWithCredential(credential);
+
+                          if (result.user != null) {
+                            try {
+                              await user.updatePassword(newPassword);
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("Đổi mật khẩu thành công"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (passwordUpdateError) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("Lỗi đổi mật khẩu"),
+                                ),
+                              );
+                            }
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          Navigator.pop(dialogContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Mật khẩu hiện tại không đúng"),
+                            ),
+                          );
+                        } catch (e) {
+                          Navigator.pop(dialogContext);
+                        }
+                      } else {
+                        Navigator.pop(dialogContext);
                       }
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Lỗi: ${e.toString()}")),
-                      );
+                      Navigator.pop(dialogContext);
                     }
                   },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                   child: Text("Cập nhật"),
                 ),
               ],
@@ -992,6 +971,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Widget _buildExpansionTile(String title, IconData icon, List<Widget> children) {
     return Card(
+      color: Colors.white,
       margin: EdgeInsets.symmetric(vertical: 4),
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -1007,6 +987,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Widget _buildMenuItem(String title, IconData icon, VoidCallback onTap) {
     return Card(
+      color: Colors.white,
       margin: EdgeInsets.symmetric(vertical: 4),
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -1022,13 +1003,20 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   Widget _buildSubMenuItem(String title, IconData icon, VoidCallback onTap) {
-    return ListTile(
-      contentPadding: EdgeInsets.only(left: 32, right: 16),
-      title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      trailing: Icon(icon, size: 18, color: Colors.grey.shade700),
-      onTap: onTap,
+    return Container(
+      color: Colors.white,
+      child: ListTile(
+        contentPadding: EdgeInsets.only(left: 32, right: 16),
+        title: Text(
+          title,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        trailing: Icon(icon, size: 18, color: Colors.grey.shade700),
+        onTap: onTap,
+      ),
     );
   }
+
 
   Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
@@ -1038,10 +1026,8 @@ class _MoreScreenState extends State<MoreScreen> {
       unselectedItemColor: Colors.grey,
       onTap: _onItemTapped,
       items: [
-        BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle), label: "Nhập vào"),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today), label: "Lịch"),
+        BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: "Nhập vào"),
+        BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Lịch"),
         BottomNavigationBarItem(icon: Icon(Icons.pie_chart), label: "Báo cáo"),
         BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: "Khác"),
       ],

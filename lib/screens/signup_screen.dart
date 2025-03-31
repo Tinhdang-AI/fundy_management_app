@@ -211,7 +211,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Color(0xFFFF8B55),
+        backgroundColor: Colors.orange.shade200,
         body: Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
@@ -219,7 +219,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFFFF8B55),
+      backgroundColor: Colors.orange.shade200,
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(top: 80, left: 30, right: 30),
@@ -238,7 +238,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'Điền thông tin bên dưới để tạo tài khoản!',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF0C7AD1),
+                  color: Colors.blueGrey,
                 ),
               ),
               SizedBox(height: 20),
