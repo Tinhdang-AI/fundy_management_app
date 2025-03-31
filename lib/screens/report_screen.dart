@@ -469,48 +469,110 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     final netAmount = _incomeTotal - _expenseTotal;
 
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+      padding: EdgeInsets.symmetric(vertical: 16, horizontal: 15),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: Colors.white,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // First row: Expense and Income boxes
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Chi tiêu:', style: TextStyle(color: Colors.black)),
-              Text(
-                  '-${formatCurrencyWithSymbol(_expenseTotal)}',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+              // Expense box
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Chi tiêu:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '-${formatCurrencyWithSymbol(_expenseTotal)}',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-          SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Thu nhập:', style: TextStyle(color: Colors.black)),
-              Text(
-                  '+${formatCurrencyWithSymbol(_incomeTotal)}',
-                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)
-              ),
-            ],
-          ),
-          SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Thu chi:', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              Text(
-                netAmount >= 0
-                    ? '+${formatCurrencyWithSymbol(netAmount)}'
-                    : '-${formatCurrencyWithSymbol(netAmount.abs())}',
-                style: TextStyle(
-                    color: netAmount >= 0 ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold
+              SizedBox(width: 8),
+              // Income box
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Thu nhập:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '+${formatCurrencyWithSymbol(_incomeTotal)}',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 10),
+          // Second row: Balance box
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Thu chi:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  netAmount >= 0
+                      ? '+${formatCurrencyWithSymbol(netAmount)}'
+                      : '-${formatCurrencyWithSymbol(netAmount.abs())}',
+                  style: TextStyle(
+                    color: netAmount >= 0 ? Colors.green : Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
