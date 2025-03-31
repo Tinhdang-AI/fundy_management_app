@@ -19,39 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   final DatabaseService _databaseService = DatabaseService();
 
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginState();
-  }
-
-  Future<void> _checkLoginState() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-      if (isLoggedIn) {
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          Navigator.pushReplacementNamed(context, '/expense');
-        } else {
-          // User was logged in according to SharedPreferences but Firebase says no
-          await prefs.setBool('isLoggedIn', false);
-        }
-      }
-    } catch (e) {
-      print("Error checking login state: $e");
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _saveLoginState() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', true);
@@ -76,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Thử đăng nhập trực tiếp mà không kiểm tra trước
       UserCredential userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
         email: email,
@@ -210,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.orange.shade200,
+      backgroundColor: Colors.orange,
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(top: 125, left: 30, right: 30),
@@ -228,8 +194,8 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 'Nhập email và mật khẩu để tiếp tục.',
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.blueGrey,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black54,
                 ),
               ),
               SizedBox(height: 20),
