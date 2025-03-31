@@ -13,12 +13,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    //Chuyển ứng dụng sang chế độ toàn màn hình.
-    // Ẩn thanh trạng thái (status bar) và thanh điều hướng (navigation bar).
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
 
-    Future.delayed(const Duration(seconds: 3), () {  //Đợi 3 giây (hiển thị màn hình Splash trong 3 giây).
-      Navigator.of(context).pushReplacement(    //Điều hướng đến LoginScreen và xóa SplashScreen khỏi lịch sử điều hướng
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => LoginScreen()),
       );
     });
@@ -31,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.orange, Colors.deepOrangeAccent], // More contrast
+            colors: [Colors.orange, Colors.deepOrangeAccent],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),
