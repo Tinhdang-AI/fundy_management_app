@@ -55,10 +55,8 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Using the stream version of getUserExpenses() but converting to Future
       final expenses = await _databaseService.getUserExpenses().first;
 
-      // Extract unique categories for filtering
       Set<String> categories = {};
       expenses.forEach((expense) {
         if (expense.category.isNotEmpty) {
@@ -205,13 +203,12 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  // Edit/rename expense
   Future<void> _editExpense(ExpenseModel expense) async {
-    // First, show dialog to edit
+    // Hiển thị dialog chỉnh sửa
     final bool? result = await _showEditDialog(expense);
 
     if (result != true) {
-      return; // User cancelled
+      return; // Người dùng đã hủy
     }
 
     setState(() {
@@ -219,11 +216,11 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Get the updated values from the dialog
-      final double amount = double.tryParse(_editAmountController.text.replaceAll(',', '')) ?? expense.amount;
+      // Lấy giá trị đã cập nhật từ dialog
+      final double amount = parseFormattedCurrency(_editAmountController.text);
       final String note = _editNoteController.text.trim();
 
-      // Only update if something changed
+      // Chỉ cập nhật nếu có sự thay đổi
       if (amount != expense.amount || note != expense.note) {
         await _databaseService.updateExpense(
             ExpenseModel(
@@ -238,7 +235,7 @@ class _SearchScreenState extends State<SearchScreen> {
             )
         );
 
-        // Update local lists
+        // Cập nhật danh sách local
         final updatedExpense = ExpenseModel(
           id: expense.id,
           userId: expense.userId,
@@ -251,6 +248,7 @@ class _SearchScreenState extends State<SearchScreen> {
         );
 
         setState(() {
+          // Find and update in both lists
           final allIndex = _allExpenses.indexWhere((item) => item.id == expense.id);
           if (allIndex >= 0) {
             _allExpenses[allIndex] = updatedExpense;
@@ -263,10 +261,9 @@ class _SearchScreenState extends State<SearchScreen> {
         });
 
         _calculateTotals();
-        _showMessage("Đã cập nhật giao dịch thành công");
+        _showMessage("Đã cập nhật giao dịch thành công", isError: false);
       }
     } catch (e) {
-      print("Error updating expense: $e");
       _showMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.", isError: true);
     } finally {
       setState(() {
@@ -457,6 +454,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -737,54 +735,56 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       );
     }
-
-    return ListView.builder(
-      padding: EdgeInsets.all(16),
-      itemCount: filteredResults.length,
-      itemBuilder: (context, index) {
-        final item = filteredResults[index];
-        return Container(
-          margin: EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onLongPress: () => _showActionMenu(context, item),
-            borderRadius: BorderRadius.circular(12),
-            child: ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: _buildCategoryIcon(item),
-              ),
-              title: Text(
-                item.category,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.note),
-                  Text(DateFormat('dd/MM/yyyy').format(item.date)),
-                ],
-              ),
-              trailing: Text(
-                formatCurrencyWithSymbol(item.amount),
-                style: TextStyle(
-                  color: item.isExpense ? Colors.red : Colors.green,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              isThreeLine: true,
+    return SafeArea(
+      bottom: true,
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: filteredResults.length,
+        itemBuilder: (context, index) {
+          final item = filteredResults[index];
+          return Container(
+            margin: EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-        );
-      },
+            child: InkWell(
+              onLongPress: () => _showActionMenu(context, item),
+              borderRadius: BorderRadius.circular(12),
+              child: ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _buildCategoryIcon(item),
+                ),
+                title: Text(
+                  item.category,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.note),
+                    Text(DateFormat('dd/MM/yyyy').format(item.date)),
+                  ],
+                ),
+                trailing: Text(
+                  formatCurrencyWithSymbol(item.amount),
+                  style: TextStyle(
+                    color: item.isExpense ? Colors.red : Colors.green,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                isThreeLine: true,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 

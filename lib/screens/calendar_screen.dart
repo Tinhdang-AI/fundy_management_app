@@ -25,6 +25,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   double _expenseTotal = 0;
   double _netTotal = 0;
   bool _isLoading = true;
+  bool _showDateSelector = false;
 
   // Thêm để theo dõi ngày có giao dịch
   Map<DateTime, List<ExpenseModel>> _eventsByDay = {};
@@ -55,39 +56,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final int month = _focusedDay.month;
       final int year = _focusedDay.year;
 
-      _databaseService.getExpensesByMonth(month, year).listen(
-            (expenses) {
-          if (mounted) {
-            // Nhóm các giao dịch theo ngày
-            Map<DateTime, List<ExpenseModel>> eventsByDay = {};
+      final expenses = await _databaseService.getExpensesByMonthFuture(month, year);
 
-            for (var expense in expenses) {
-              // Chỉ lấy ngày tháng năm, không lấy giờ phút giây
-              final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
+      // Nhóm các giao dịch theo ngày
+      Map<DateTime, List<ExpenseModel>> eventsByDay = {};
 
-              if (eventsByDay[date] == null) {
-                eventsByDay[date] = [];
-              }
-              eventsByDay[date]!.add(expense);
-            }
+      for (var expense in expenses) {
+        // Chỉ lấy ngày tháng năm, không lấy giờ phút giây
+        final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
 
-            setState(() {
-              _eventsByDay = eventsByDay;
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (e) {
-          print("Error loading month data: $e");
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-      );
+        if (eventsByDay[date] == null) {
+          eventsByDay[date] = [];
+        }
+        eventsByDay[date]!.add(expense);
+      }
+
+      if (mounted) {
+        setState(() {
+          _eventsByDay = eventsByDay;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      print("Error in _loadMonthData: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -116,38 +106,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     try {
-      print("Loading expenses for date: ${DateFormat('yyyy-MM-dd').format(_selectedDay)}");
+      final expenses = await _databaseService.getExpensesByDateFuture(_selectedDay);
 
-      _databaseService.getExpensesByDate(_selectedDay).listen(
-            (expenses) {
-          print("Received ${expenses.length} expenses for selected day");
-          if (mounted) {
-            setState(() {
-              _selectedDayExpenses = expenses;
-              _calculateTotals();
-              _isLoading = false;
-            });
-          }
-        },
-        onError: (e) {
-          print("Error in getExpensesByDate stream: $e");
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-        onDone: () {
-          print("Stream completed for selected day");
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        },
-      );
+      if (mounted) {
+        setState(() {
+          _selectedDayExpenses = expenses;
+          _calculateTotals();
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      print("Error in _loadSelectedDayData: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -183,7 +151,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _calculateTotals();
       _showMessage("Đã xóa giao dịch thành công", isError: false);
     } catch (e) {
-      print("Error deleting expense: $e");
       setState(() {
         _isLoading = false;
       });
@@ -257,7 +224,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _showMessage("Đã cập nhật giao dịch thành công", isError: false);
       }
     } catch (e) {
-      print("Error updating expense: $e");
       _showMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.", isError: true);
     } finally {
       setState(() {
@@ -456,9 +422,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  // Add this method for date selection like in ExpenseScreen
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDay,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && picked != _selectedDay) {
+      setState(() {
+        _selectedDay = picked;
+
+        // Also update focused day if the month changes
+        if (picked.month != _focusedDay.month || picked.year != _focusedDay.year) {
+          _focusedDay = DateTime(picked.year, picked.month, 1);
+          _loadMonthData();
+        }
+      });
+      _loadSelectedDayData();
+    }
+  }
+
+  // Add a method to change the day
+  void _changeDay(int days) {
+    final newDate = _selectedDay.add(Duration(days: days));
+    setState(() {
+      _selectedDay = newDate;
+
+      // Update focused day if the month changes
+      if (newDate.month != _focusedDay.month || newDate.year != _focusedDay.year) {
+        _focusedDay = DateTime(newDate.year, newDate.month, 1);
+        _loadMonthData();
+      }
+    });
+    _loadSelectedDayData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text('Lịch', style: TextStyle(color: Colors.black)),
@@ -479,7 +483,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Column(
         children: [
-          _buildMonthSelector(),
+          _buildDateSelector(),
           _buildCustomCalendar(),
           _buildSummary(),
           Expanded(
@@ -502,44 +506,79 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildMonthSelector() {
-    // Định dạng ngày đầu tháng và cuối tháng
+  // Updated date selector widget that replaces the month selector
+  Widget _buildDateSelector() {
+    // Calculate month range info for display
     DateTime firstDay = DateTime(_focusedDay.year, _focusedDay.month, 1);
     DateTime lastDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
     String monthRange = "${DateFormat('MM/yyyy').format(_focusedDay)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
 
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Color(0xFFFFA07A), // Màu cam sáng giống trong hình
+        color: Color(0xFFFFA07A), // Same color as previous month selector
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1);
-              });
-              _loadMonthData();
-            },
+            onPressed: () => _changeMonth(-1),
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
           ),
-          Text(
-            monthRange,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _selectDate(context),
+              child: Column(
+                children: [
+                  Text(
+                    DateFormat('dd/MM/yyyy (E)').format(_selectedDay),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    monthRange,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1);
-              });
-              _loadMonthData();
-            },
+            onPressed: () => _changeMonth(1),
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
           ),
         ],
       ),
     );
+  }
+
+  // Add these methods to handle month changes
+  void _changeMonth(int months) {
+    setState(() {
+      _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + months);
+
+      // Update selected day to be within the new month
+      if (_selectedDay.month != _focusedDay.month || _selectedDay.year != _focusedDay.year) {
+        _selectedDay = DateTime(_focusedDay.year, _focusedDay.month, min(_selectedDay.day, DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day));
+      }
+    });
+    _loadMonthData();
+    _loadSelectedDayData();
+  }
+
+  // Helper function to get min value
+  int min(int a, int b) {
+    return a < b ? a : b;
   }
 
   Widget _buildCustomCalendar() {
@@ -828,7 +867,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       selectedItemColor: Colors.orange,
       unselectedItemColor: Colors.grey,
       onTap: _onItemTapped,
-      items: [
+      items: const [
         BottomNavigationBarItem(
             icon: Icon(Icons.add_circle), label: "Nhập vào"),
         BottomNavigationBarItem(

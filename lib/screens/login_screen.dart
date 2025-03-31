@@ -202,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Color(0xFFFF8B55),
+        backgroundColor: Colors.orange.shade200,
         body: Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFFFF8B55),
+      backgroundColor: Colors.orange.shade200,
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(top: 125, left: 30, right: 30),
@@ -229,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 'Nhập email và mật khẩu để tiếp tục.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF0C7AD1),
+                  color: Colors.blueGrey,
                 ),
               ),
               SizedBox(height: 20),
