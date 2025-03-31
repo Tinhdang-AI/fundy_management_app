@@ -132,8 +132,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   Future<void> _saveExpense() async {
-    if (noteController.text.isEmpty || amountController.text.isEmpty || selectedCategory.isEmpty) {
-      _showMessage("Vui lòng nhập đầy đủ thông tin!");
+    if (amountController.text.isEmpty || selectedCategory.isEmpty) {
+      _showMessage("Vui lòng nhập số tiền và chọn danh mục!");
       return;
     }
 
