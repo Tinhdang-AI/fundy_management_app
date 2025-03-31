@@ -37,6 +37,11 @@ dev_dependencies:
 flutter:
   assets:
     - assets/google_icon.png
+    - assets/logo_icon.png
 
   uses-material-design: true
 
+flutter_icons:
+  image_path: "assets/logo_icon.png"
+  android: true
+  remove_alpha_android: true
