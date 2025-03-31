@@ -219,7 +219,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.orange.shade200,
+      backgroundColor: Colors.orange,
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.only(top: 80, left: 30, right: 30),
@@ -238,7 +238,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 'Điền thông tin bên dưới để tạo tài khoản!',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.blueGrey,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black54,
                 ),
               ),
               SizedBox(height: 20),
