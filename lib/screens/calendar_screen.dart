@@ -9,6 +9,7 @@ import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
 import '/utils/message_utils.dart';
+import '/utils/transaction_utils.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -125,244 +126,75 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  Future<void> _deleteExpense(ExpenseModel expense) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _databaseService.deleteExpense(expense.id);
-
-      // Cập nhật UI
-      setState(() {
-        _selectedDayExpenses.removeWhere((item) => item.id == expense.id);
-
-        // Cập nhật events
-        final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
-        if (_eventsByDay.containsKey(date)) {
-          _eventsByDay[date]?.removeWhere((item) => item.id == expense.id);
-          if (_eventsByDay[date]?.isEmpty ?? true) {
-            _eventsByDay.remove(date);
+  void _showActionMenu(BuildContext context, ExpenseModel expense) {
+    TransactionUtils.showActionMenu(
+        context,
+        expense,
+            () => _editExpense(expense),
+            () async {
+          final confirmed = await TransactionUtils.showDeleteConfirmation(context, expense);
+          if (confirmed == true) {
+            _deleteExpense(expense);
           }
         }
-
-        _isLoading = false;
-      });
-
-      _calculateTotals();
-      _showSuccessMessage("Đã xóa giao dịch thành công");
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.");
-    }
+    );
   }
 
-  // Thêm phương thức chỉnh sửa giao dịch
   Future<void> _editExpense(ExpenseModel expense) async {
-    // Hiển thị dialog chỉnh sửa
-    final bool? result = await _showEditDialog(expense);
+    TransactionUtils.editTransaction(
+        context,
+        expense,
+            (updatedExpense) {
+          setState(() {
+            // Cập nhật trong danh sách ngày hiện tại
+            final index = _selectedDayExpenses.indexWhere((item) => item.id == expense.id);
+            if (index >= 0) {
+              _selectedDayExpenses[index] = updatedExpense;
+            }
 
-    if (result != true) {
-      return; // Người dùng đã hủy
-    }
+            // Cập nhật trong events
+            final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
+            if (_eventsByDay.containsKey(date)) {
+              final eventIndex = _eventsByDay[date]?.indexWhere((item) => item.id == expense.id) ?? -1;
+              if (eventIndex >= 0 && _eventsByDay[date] != null) {
+                _eventsByDay[date]![eventIndex] = updatedExpense;
+              }
+            }
+          });
+          _calculateTotals();
+        },
+        onLoading: (isLoading) {
+          setState(() {
+            _isLoading = isLoading;
+          });
+        },
+    );
+  }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Lấy giá trị đã cập nhật từ dialog
-      final double amount = parseFormattedCurrency(_editAmountController.text);
-      final String note = _editNoteController.text.trim();
-
-      // Chỉ cập nhật nếu có sự thay đổi
-      if (amount != expense.amount || note != expense.note) {
-        await _databaseService.updateExpense(
-            ExpenseModel(
-              id: expense.id,
-              userId: expense.userId,
-              note: note,
-              amount: amount,
-              category: expense.category,
-              categoryIcon: expense.categoryIcon,
-              date: expense.date,
-              isExpense: expense.isExpense,
-            )
-        );
-
-        // Cập nhật danh sách local
-        final updatedExpense = ExpenseModel(
-          id: expense.id,
-          userId: expense.userId,
-          note: note,
-          amount: amount,
-          category: expense.category,
-          categoryIcon: expense.categoryIcon,
-          date: expense.date,
-          isExpense: expense.isExpense,
-        );
-
+  Future<void> _deleteExpense(ExpenseModel expense) async {
+    await TransactionUtils.deleteTransaction(
+      context,
+      expense,
+          () {
         setState(() {
-          // Cập nhật trong danh sách ngày hiện tại
-          final index = _selectedDayExpenses.indexWhere((item) => item.id == expense.id);
-          if (index >= 0) {
-            _selectedDayExpenses[index] = updatedExpense;
-          }
+          _selectedDayExpenses.removeWhere((item) => item.id == expense.id);
 
-          // Cập nhật trong events
+          // Cập nhật events
           final date = DateTime(expense.date.year, expense.date.month, expense.date.day);
           if (_eventsByDay.containsKey(date)) {
-            final eventIndex = _eventsByDay[date]?.indexWhere((item) => item.id == expense.id) ?? -1;
-            if (eventIndex >= 0 && _eventsByDay[date] != null) {
-              _eventsByDay[date]![eventIndex] = updatedExpense;
+            _eventsByDay[date]?.removeWhere((item) => item.id == expense.id);
+            if (_eventsByDay[date]?.isEmpty ?? true) {
+              _eventsByDay.remove(date);
             }
           }
         });
 
         _calculateTotals();
-        _showSuccessMessage("Đã cập nhật giao dịch thành công");
-      }
-    } catch (e) {
-      _showErrorMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.");
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Hiển thị dialog chỉnh sửa
-  Future<bool?> _showEditDialog(ExpenseModel expense) {
-    // Khởi tạo controllers với giá trị hiện tại
-    _editNoteController.text = expense.note;
-    _editAmountController.text = formatCurrency.format(expense.amount);
-
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Chỉnh sửa giao dịch'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Danh mục: ${expense.category}', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              TextField(
-                controller: _editNoteController,
-                decoration: InputDecoration(
-                  labelText: 'Ghi chú',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _editAmountController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Số tiền',
-                  border: OutlineInputBorder(),
-                  suffix: Text('đ'),
-                ),
-                inputFormatters: [
-                  CurrencyInputFormatter(),
-                ],
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Ngày: ${DateFormat('dd/MM/yyyy').format(expense.date)}',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-
-              final amount = parseFormattedCurrency(_editAmountController.text);
-
-              if (amount <= 0) {
-                _showErrorMessage("Số tiền không hợp lệ");
-                return;
-              }
-
-              Navigator.pop(context, true);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: Text('Lưu'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Hiển thị xác nhận xóa
-  Future<bool?> _showDeleteConfirmation(ExpenseModel expense) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Xác nhận xóa'),
-        content: Text(
-            'Bạn có chắc chắn muốn xóa khoản ${expense.isExpense ? "chi" : "thu"} "${expense.note}" với số tiền ${formatCurrencyWithSymbol(expense.amount)} không?'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Hiển thị menu thao tác khi nhấn giữ
-  void _showActionMenu(BuildContext context, ExpenseModel expense) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.edit, color: Colors.orange),
-                title: Text('Chỉnh sửa giao dịch'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _editExpense(expense);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Xóa giao dịch'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final confirm = await _showDeleteConfirmation(expense);
-                  if (confirm == true) {
-                    _deleteExpense(expense);
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.close),
-                title: Text('Hủy'),
-                onTap: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
+      },
+      onLoading: (isLoading) {
+        setState(() {
+          _isLoading = isLoading;
+        });
       },
     );
   }
@@ -808,44 +640,82 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
               child: Text(date, style: TextStyle(color: Colors.white, fontSize: 13)),
             ),
-            ...dayExpenses.map((expense) => Container(
-              margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: InkWell(
-                onLongPress: () => _showActionMenu(context, expense),
-                borderRadius: BorderRadius.circular(12),
-                child: ListTile(
-                  leading: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(8),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.all(8),
+              itemCount: dayExpenses.length,
+              separatorBuilder: (context, index) => SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final expense = dayExpenses[index];
+                final bool hasNote = expense.note.trim().isNotEmpty;
+
+                return Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 2,
+                  child: InkWell(
+                    onLongPress: () => _showActionMenu(context, expense),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Icon danh mục với màu khác nhau cho thu/chi
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              IconData(int.parse(expense.categoryIcon), fontFamily: 'MaterialIcons'),
+                              color: expense.isExpense ? Colors.red : Colors.green, // Đổi màu icon theo loại giao dịch
+                            ),
+                          ),
+                          SizedBox(width: 12),
+
+                          // Nội dung chính
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                      Text(
+                                        expense.category,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                if (hasNote)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      expense.note,
+                                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+
+                          // Số tiền
+                          Text(
+                            formatCurrencyWithSymbol(expense.amount),
+                            style: TextStyle(
+                              color: expense.isExpense ? Colors.red : Colors.green,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Icon(
-                        IconData(int.parse(expense.categoryIcon), fontFamily: 'MaterialIcons'),
-                        color: Colors.orange
-                    ),
                   ),
-                  title: Row(
-                    children: [
-                      expense.isExpense ? SizedBox() : Text('🔥 ', style: TextStyle(fontSize: 16)),
-                      Text(expense.category, style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  subtitle: Text(expense.note),
-                  trailing: Text(
-                      formatCurrencyWithSymbol(expense.amount),
-                      style: TextStyle(
-                          color: expense.isExpense ? Colors.red : Colors.green,
-                          fontWeight: FontWeight.bold
-                      )
-                  ),
-                ),
-              ),
-            )).toList(),
+                );
+              },
+            ),
           ],
         );
       },

@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
 import '/utils/message_utils.dart';
+import '/utils/transaction_utils.dart';
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -178,230 +179,66 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  // Delete expense
-  Future<void> _deleteExpense(ExpenseModel expense) async {
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      await _databaseService.deleteExpense(expense.id);
-
-      setState(() {
-        _allExpenses.removeWhere((item) => item.id == expense.id);
-        _searchResults.removeWhere((item) => item.id == expense.id);
-        _isSearching = false;
-      });
-
-      _calculateTotals();
-      _showSuccessMessage("Đã xóa giao dịch thành công");
-    } catch (e) {
-      print("Error deleting expense: $e");
-      setState(() {
-        _isSearching = false;
-      });
-      _showErrorMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.");
-    }
-  }
-
-  Future<void> _editExpense(ExpenseModel expense) async {
-    // Hiển thị dialog chỉnh sửa
-    final bool? result = await _showEditDialog(expense);
-
-    if (result != true) {
-      return; // Người dùng đã hủy
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      // Lấy giá trị đã cập nhật từ dialog
-      final double amount = parseFormattedCurrency(_editAmountController.text);
-      final String note = _editNoteController.text.trim();
-
-      // Chỉ cập nhật nếu có sự thay đổi
-      if (amount != expense.amount || note != expense.note) {
-        await _databaseService.updateExpense(
-            ExpenseModel(
-              id: expense.id,
-              userId: expense.userId,
-              note: note,
-              amount: amount,
-              category: expense.category,
-              categoryIcon: expense.categoryIcon,
-              date: expense.date,
-              isExpense: expense.isExpense,
-            )
-        );
-
-        // Cập nhật danh sách local
-        final updatedExpense = ExpenseModel(
-          id: expense.id,
-          userId: expense.userId,
-          note: note,
-          amount: amount,
-          category: expense.category,
-          categoryIcon: expense.categoryIcon,
-          date: expense.date,
-          isExpense: expense.isExpense,
-        );
-
-        setState(() {
-          // Find and update in both lists
-          final allIndex = _allExpenses.indexWhere((item) => item.id == expense.id);
-          if (allIndex >= 0) {
-            _allExpenses[allIndex] = updatedExpense;
-          }
-
-          final searchIndex = _searchResults.indexWhere((item) => item.id == expense.id);
-          if (searchIndex >= 0) {
-            _searchResults[searchIndex] = updatedExpense;
-          }
-        });
-
-        _calculateTotals();
-        _showSuccessMessage("Đã cập nhật giao dịch thành công");
-      }
-    } catch (e) {
-      _showErrorMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.");
-    } finally {
-      setState(() {
-        _isSearching = false;
-      });
-    }
-  }
-
-  Future<bool?> _showEditDialog(ExpenseModel expense) {
-    // Initialize controllers with current values
-    _editNoteController.text = expense.note;
-    _editAmountController.text = formatCurrency.format(expense.amount);
-
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Chỉnh sửa giao dịch'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Danh mục: ${expense.category}', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              TextField(
-                controller: _editNoteController,
-                decoration: InputDecoration(
-                  labelText: 'Ghi chú',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _editAmountController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Số tiền',
-                  border: OutlineInputBorder(),
-                  suffix: Text('đ'),
-                ),
-                inputFormatters: [
-                  CurrencyInputFormatter(),
-                ],
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Ngày: ${DateFormat('dd/MM/yyyy').format(expense.date)}',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-
-              final amount = parseFormattedCurrency(_editAmountController.text);
-
-              if (amount <= 0) {
-                _showErrorMessage("Số tiền không hợp lệ");
-                return;
-              }
-
-              Navigator.pop(context, true);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            child: Text('Lưu'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<bool?> _showDeleteConfirmation(ExpenseModel expense) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Xác nhận xóa'),
-        content: Text(
-            'Bạn có chắc chắn muốn xóa khoản ${expense.isExpense ? "chi" : "thu"} "${expense.note}" với số tiền ${formatCurrencyWithSymbol(expense.amount)} không?'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Xóa'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Show action menu on long press
+  // Show action menu on long press using TransactionUtils
   void _showActionMenu(BuildContext context, ExpenseModel expense) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.edit, color: Colors.orange),
-                title: Text('Chỉnh sửa giao dịch'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _editExpense(expense);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Xóa giao dịch'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  final confirm = await _showDeleteConfirmation(expense);
-                  if (confirm == true) {
-                    _deleteExpense(expense);
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.close),
-                title: Text('Hủy'),
-                onTap: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
-      },
+    TransactionUtils.showActionMenu(
+        context,
+        expense,
+            () => _editExpense(expense),
+            () async {
+          final confirmed = await TransactionUtils.showDeleteConfirmation(context, expense);
+          if (confirmed == true) {
+            _deleteExpense(expense);
+          }
+        }
+    );
+  }
+
+  // Delete expense using TransactionUtils
+  Future<void> _deleteExpense(ExpenseModel expense) async {
+    TransactionUtils.deleteTransaction(
+        context,
+        expense,
+            () {
+          setState(() {
+            _allExpenses.removeWhere((item) => item.id == expense.id);
+            _searchResults.removeWhere((item) => item.id == expense.id);
+          });
+          _calculateTotals();
+        },
+        onLoading: (isLoading) {
+          setState(() {
+            _isSearching = isLoading;
+          });
+        }
+    );
+  }
+
+  // Edit expense using TransactionUtils
+  Future<void> _editExpense(ExpenseModel expense) async {
+    TransactionUtils.editTransaction(
+        context,
+        expense,
+            (updatedExpense) {
+          setState(() {
+            // Find and update in both lists
+            final allIndex = _allExpenses.indexWhere((item) => item.id == expense.id);
+            if (allIndex >= 0) {
+              _allExpenses[allIndex] = updatedExpense;
+            }
+
+            final searchIndex = _searchResults.indexWhere((item) => item.id == expense.id);
+            if (searchIndex >= 0) {
+              _searchResults[searchIndex] = updatedExpense;
+            }
+          });
+          _calculateTotals();
+        },
+        onLoading: (isLoading) {
+          setState(() {
+            _isSearching = isLoading;
+          });
+        }
     );
   }
 
@@ -505,7 +342,7 @@ class _SearchScreenState extends State<SearchScreen> {
         controller: _searchController,
         onChanged: _onSearchChanged,
         decoration: InputDecoration(
-          hintText: 'Tìm kiếm ghi chú...',
+          hintText: 'Tìm kiếm',
           prefixIcon: Icon(Icons.search, color: Colors.grey),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
@@ -720,95 +557,102 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
-    // Filter by expense or income based on toggle
+    // Lọc kết quả theo khoản chi hoặc thu nhập
     List<ExpenseModel> filteredResults = _searchResults
         .where((item) => item.isExpense == _showExpenses)
         .toList();
 
-    // Sort by date (newest first)
+    // Sắp xếp theo ngày (mới nhất trước)
     filteredResults.sort((a, b) => b.date.compareTo(a.date));
 
     if (filteredResults.isEmpty) {
       return Center(
         child: Text(
           'Không có ${_showExpenses ? 'khoản chi' : 'khoản thu'} nào phù hợp',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
+
     return SafeArea(
       bottom: true,
-      child: ListView.builder(
+      child: ListView.separated(
         padding: EdgeInsets.all(16),
         itemCount: filteredResults.length,
+        separatorBuilder: (context, index) => SizedBox(height: 8),
         itemBuilder: (context, index) {
           final item = filteredResults[index];
-          return Container(
-            margin: EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
-            ),
+          final bool hasNote = item.note.trim().isNotEmpty;
+
+          return Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            elevation: 2,
             child: InkWell(
               onLongPress: () => _showActionMenu(context, item),
               borderRadius: BorderRadius.circular(12),
-              child: ListTile(
-                leading: Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _buildCategoryIcon(item),
-                ),
-                title: Text(
-                  item.category,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(item.note),
-                    Text(DateFormat('dd/MM/yyyy').format(item.date)),
+                    // Icon danh mục với màu khác nhau cho thu/chi
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        IconData(int.parse(item.categoryIcon), fontFamily: 'MaterialIcons'),
+                        color: item.isExpense ? Colors.red : Colors.green,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    // Nội dung chính
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.category,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (hasNote)
+                            Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Text(
+                                item.note,
+                                style: TextStyle(color: Colors.grey, fontSize: 14),
+                              ),
+                            ),
+                          SizedBox(height: 4),
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(item.date),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Số tiền
+                    Text(
+                      formatCurrencyWithSymbol(item.amount),
+                      style: TextStyle(
+                        color: item.isExpense ? Colors.red : Colors.green,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
-                trailing: Text(
-                  formatCurrencyWithSymbol(item.amount),
-                  style: TextStyle(
-                    color: item.isExpense ? Colors.red : Colors.green,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                isThreeLine: true,
               ),
             ),
           );
         },
       ),
     );
-  }
-
-  Widget _buildCategoryIcon(ExpenseModel item) {
-    try {
-      // Handle potential parsing errors with the category icon
-      if (item.categoryIcon.isEmpty) {
-        return Icon(
-          item.isExpense ? Icons.trending_down : Icons.trending_up,
-          color: item.isExpense ? Colors.red : Colors.green,
-        );
-      }
-
-      return Icon(
-        IconData(int.parse(item.categoryIcon), fontFamily: 'MaterialIcons'),
-        color: item.isExpense ? Colors.red : Colors.green,
-      );
-    } catch (e) {
-      // Fallback icon if there's an error
-      return Icon(
-        item.isExpense ? Icons.trending_down : Icons.trending_up,
-        color: item.isExpense ? Colors.red : Colors.green,
-      );
-    }
   }
 }

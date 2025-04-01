@@ -9,6 +9,7 @@ import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
 import '/utils/message_utils.dart';
+import '/utils/transaction_utils.dart';
 
 class ReportScreen extends StatefulWidget {
   @override
@@ -30,6 +31,12 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
   List<ExpenseModel> _incomes = [];
   Map<String, double> _expenseCategoryTotals = {};
   Map<String, double> _incomeCategoryTotals = {};
+
+  // Thêm biến để theo dõi trạng thái hiển thị chi tiết danh mục
+  String? _selectedCategory;
+  bool _showingCategoryDetails = false;
+  bool _isCategoryExpense = true; // Là chi tiêu hay thu nhập
+  List<ExpenseModel> _categoryTransactions = [];
 
   // Danh sách màu cho biểu đồ tròn
   final List<Color> _colors = [
@@ -95,7 +102,10 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
 
   void _handleTabSelection() {
     if (_tabController!.indexIsChanging) {
-      setState(() {});
+      setState(() {
+        // Reset category details view when switching tabs
+        _showingCategoryDetails = false;
+      });
     }
   }
 
@@ -108,6 +118,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       _incomes = [];
       _expenseCategoryTotals = {};
       _incomeCategoryTotals = {};
+      _showingCategoryDetails = false;
     });
 
     try {
@@ -123,6 +134,36 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       });
       _showErrorMessage("Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.");
     }
+  }
+
+  // Mới: hàm xử lý khi nhấp vào một danh mục
+  void _showCategoryDetails(String category, bool isExpense) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    _selectedCategory = category;
+    _isCategoryExpense = isExpense;
+
+    // Lọc các giao dịch theo danh mục đã chọn
+    _categoryTransactions = isExpense
+        ? _expenses.where((expense) => expense.category == category).toList()
+        : _incomes.where((income) => income.category == category).toList();
+
+    // Sắp xếp theo ngày (mới nhất trước)
+    _categoryTransactions.sort((a, b) => b.date.compareTo(a.date));
+
+    setState(() {
+      _showingCategoryDetails = true;
+      _isLoading = false;
+    });
+  }
+
+  // Mới: hàm quay lại báo cáo chính
+  void _backToMainReport() {
+    setState(() {
+      _showingCategoryDetails = false;
+    });
   }
 
   Future<void> _loadMonthlyData() async {
@@ -211,6 +252,107 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       }
     }
   }
+  void _showTransactionActionMenu(BuildContext context, ExpenseModel expense) {
+    TransactionUtils.showActionMenu(
+        context,
+        expense,
+            () => _editTransaction(expense),
+            () async {
+          final confirmed = await TransactionUtils.showDeleteConfirmation(context, expense);
+          if (confirmed == true) {
+            _deleteTransaction(expense);
+          }
+        }
+    );
+  }
+
+// Hàm sửa giao dịch
+  Future<void> _editTransaction(ExpenseModel expense) async {
+    TransactionUtils.editTransaction(
+      context,
+      expense,
+          (updatedExpense) {
+        setState(() {
+          _isLoading = true;
+        });
+
+        // Cập nhật trong danh sách hiện tại
+        int index = _categoryTransactions.indexWhere((item) => item.id == expense.id);
+        if (index >= 0) {
+          _categoryTransactions[index] = updatedExpense;
+        }
+
+        // Cập nhật trong danh sách gốc (expenses hoặc incomes)
+        if (expense.isExpense) {
+          index = _expenses.indexWhere((item) => item.id == expense.id);
+          if (index >= 0) {
+            _expenses[index] = updatedExpense;
+          }
+        } else {
+          index = _incomes.indexWhere((item) => item.id == expense.id);
+          if (index >= 0) {
+            _incomes[index] = updatedExpense;
+          }
+        }
+
+        // Tính lại tổng số
+        _calculateTotals();
+        _generateCategoryTotals();
+
+        // Cập nhật lại danh sách chi tiết nếu người dùng đã thay đổi danh mục
+        // hoặc loại giao dịch (chuyển từ chi tiêu sang thu nhập hoặc ngược lại)
+        if (updatedExpense.category != _selectedCategory ||
+            updatedExpense.isExpense != _isCategoryExpense) {
+          // Xóa khỏi danh sách chi tiết
+          _categoryTransactions.removeWhere((item) => item.id == expense.id);
+        }
+
+        setState(() {
+          _isLoading = false;
+        });
+      },
+      onLoading: (isLoading) {
+        setState(() {
+          _isLoading = isLoading;
+        });
+      },
+    );
+  }
+
+// Hàm xóa giao dịch
+  Future<void> _deleteTransaction(ExpenseModel expense) async {
+    TransactionUtils.deleteTransaction(
+      context,
+      expense,
+          () {
+        setState(() {
+          // Xóa khỏi danh sách chi tiết
+          _categoryTransactions.removeWhere((item) => item.id == expense.id);
+
+          // Xóa khỏi danh sách gốc
+          if (expense.isExpense) {
+            _expenses.removeWhere((item) => item.id == expense.id);
+          } else {
+            _incomes.removeWhere((item) => item.id == expense.id);
+          }
+
+          // Tính lại tổng số
+          _calculateTotals();
+          _generateCategoryTotals();
+
+          // Nếu không còn giao dịch nào, quay về màn hình chính
+          if (_categoryTransactions.isEmpty) {
+            _showingCategoryDetails = false;
+          }
+        });
+      },
+      onLoading: (isLoading) {
+        setState(() {
+          _isLoading = isLoading;
+        });
+      },
+    );
+  }
 
   void _calculateTotals() {
     _expenseTotal = _expenses.fold(0, (sum, item) => sum + item.amount);
@@ -257,6 +399,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
           _selectedDate.month,
         );
       }
+      _showingCategoryDetails = false; // Reset when changing time range
     });
 
     _loadReportData();
@@ -279,17 +422,204 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         children: [
           _buildMonthSelector(),
           _buildSummaryBox(),
-          if (!_hasNoData) _buildTabBar(),
+          if (!_hasNoData && !_showingCategoryDetails) _buildTabBar(),
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator(color: Colors.orange))
                 : _hasNoData
                 ? _buildNoDataView()
+                : _showingCategoryDetails
+                ? _buildCategoryDetailsView()
                 : _buildReportContent(),
           ),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildCategoryDetailsView() {
+    final totalAmount = _categoryTransactions.fold(0.0, (sum, tx) => sum + tx.amount);
+    final color = _isCategoryExpense ? Colors.red : Colors.green;
+
+    // Nhóm các giao dịch theo ngày
+    Map<String, List<ExpenseModel>> groupedTransactions = {};
+    for (var transaction in _categoryTransactions) {
+      String date = DateFormat('d/M/yyyy (EEEE)').format(transaction.date);
+      if (!groupedTransactions.containsKey(date)) {
+        groupedTransactions[date] = [];
+      }
+      groupedTransactions[date]!.add(transaction);
+    }
+
+    String timeRangeDisplay = isMonthly
+        ? 'Tháng ${_selectedDate.month}/${_selectedDate.year}'
+        : 'Năm ${_selectedDate.year}';
+
+    return Column(
+      children: [
+        // Thanh tiêu đề với nút quay lại
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.grey.shade200,
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: _backToMainReport,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  '$_selectedCategory',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              Text(
+                formatCurrencyWithSymbol(totalAmount),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        Container(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          width: double.infinity,
+          child: Center(
+            child: Text(
+              timeRangeDisplay,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,  // In đậm
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+
+        // Danh sách giao dịch theo ngày
+        Expanded(
+          child: _categoryTransactions.isEmpty
+              ? Center(
+            child: Text(
+              'Không có giao dịch nào',
+              style: TextStyle(color: Colors.grey),
+            ),
+          )
+              : ListView.builder(
+            itemCount: groupedTransactions.length,
+            itemBuilder: (context, index) {
+              String date = groupedTransactions.keys.elementAt(index);
+              List<ExpenseModel> dayTransactions = groupedTransactions[date]!;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Tiêu đề ngày - sửa giống tiêu đề tháng
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                    width: double.infinity,
+                    child: Text(
+                        date,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,  // In đậm
+                          fontSize: 13,
+                        )
+                    ),
+                  ),
+
+                  // Danh sách giao dịch của ngày đó
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(8),
+                    itemCount: dayTransactions.length,
+                    separatorBuilder: (context, index) => SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final transaction = dayTransactions[index];
+                      final bool hasNote = transaction.note.trim().isNotEmpty;
+
+                      return Material(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        elevation: 2,
+                        child: InkWell(
+                          onLongPress: () => _showTransactionActionMenu(context, transaction),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Icon danh mục
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    IconData(int.parse(transaction.categoryIcon), fontFamily: 'MaterialIcons'),
+                                    color: transaction.isExpense ? Colors.red : Colors.green,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+
+                                // Nội dung chính
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        transaction.category,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      if (hasNote)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            transaction.note,
+                                            style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Số tiền
+                                Text(
+                                  formatCurrencyWithSymbol(transaction.amount),
+                                  style: TextStyle(
+                                    color: transaction.isExpense ? Colors.red : Colors.green,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -365,6 +695,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                 if (!isMonthly) {
                   setState(() {
                     isMonthly = true;
+                    _showingCategoryDetails = false;
                   });
                   _loadReportData();
                 }
@@ -396,6 +727,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                 if (isMonthly) {
                   setState(() {
                     isMonthly = false;
+                    _showingCategoryDetails = false;
                   });
                   _loadReportData();
                 }
@@ -496,7 +828,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                       ),
                       Flexible(
                         child: Text(
-                          '-${formatCurrencyWithSymbol(_expenseTotal)}',
+                          formatCurrencyWithSymbol(_expenseTotal),
                           style: TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
@@ -530,7 +862,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                       ),
                       Flexible(
                         child: Text(
-                          '-${formatCurrencyWithSymbol(_incomeTotal)}',
+                          formatCurrencyWithSymbol(_incomeTotal),
                           style: TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
@@ -641,8 +973,13 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
         // Phần danh sách
         Expanded(
-          child: ListView.builder(
+          child: ListView.separated(
             itemCount: sortedCategories.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              thickness: 1,
+              color: Colors.grey.shade300,
+            ),
             itemBuilder: (context, index) {
               final category = sortedCategories[index];
               final percentage = (totalAmount > 0)
@@ -684,6 +1021,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                   formatCurrencyWithSymbol(category.value),
                   style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                 ),
+                onTap: () => _showCategoryDetails(category.key, true),
               );
             },
           ),
@@ -691,6 +1029,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       ],
     );
   }
+
 
   Widget _buildIncomeTab() {
     // Get the appropriate category data based on the selected tab
@@ -707,7 +1046,8 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     }
 
     // Sort categories by amount
-    List<MapEntry<String, double>> sortedCategories = categoryData.entries.toList()
+    List<MapEntry<String, double>> sortedCategories = categoryData.entries
+        .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final totalAmount = categoryData.values.fold(0.0, (sum, val) => sum + val);
@@ -716,7 +1056,10 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       children: [
         // Phần biểu đồ tròn
         Container(
-          height: MediaQuery.of(context).size.height * 0.25, // 25% chiều cao màn hình
+          height: MediaQuery
+              .of(context)
+              .size
+              .height * 0.25, // 25% chiều cao màn hình
           padding: EdgeInsets.symmetric(vertical: 8),
           child: _buildPieChart(sortedCategories, Colors.green, isIncome: true),
         ),
@@ -724,8 +1067,13 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         Divider(height: 1, thickness: 1, color: Colors.grey.shade300),
         // Phần danh sách
         Expanded(
-          child: ListView.builder(
+          child: ListView.separated(
             itemCount: sortedCategories.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              thickness: 1,
+              color: Colors.grey.shade300,
+            ),
             itemBuilder: (context, index) {
               final category = sortedCategories[index];
               final percentage = (totalAmount > 0)
@@ -753,7 +1101,8 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                         child: LinearProgressIndicator(
                           value: percentage / 100,
                           backgroundColor: Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation<Color>(_getIncomeColor(index)),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              _getIncomeColor(index)),
                           minHeight: 10,
                         ),
                       ),
@@ -764,8 +1113,12 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                 ),
                 trailing: Text(
                   formatCurrencyWithSymbol(category.value),
-                  style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.green, fontWeight: FontWeight.bold),
                 ),
+                onTap: () =>
+                    _showCategoryDetails(
+                        category.key, false), // Thêm sự kiện khi nhấp
               );
             },
           ),
@@ -773,6 +1126,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       ],
     );
   }
+
 
   // Hàm tạo biểu đồ tròn
   Widget _buildPieChart(List<MapEntry<String, double>> categories, Color baseColor, {bool isIncome = false}) {
@@ -784,6 +1138,14 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         pieTouchData: PieTouchData(
           touchCallback: (FlTouchEvent event, pieTouchResponse) {
             // Có thể thêm xử lý khi người dùng chạm vào biểu đồ
+            if (event is FlTapUpEvent && pieTouchResponse != null &&
+                pieTouchResponse.touchedSection != null) {
+              final touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+              if (touchedIndex >= 0 && touchedIndex < categories.length) {
+                // Khi người dùng chạm vào phần biểu đồ, cũng hiển thị chi tiết
+                _showCategoryDetails(categories[touchedIndex].key, !isIncome);
+              }
+            }
           },
         ),
       ),
