@@ -636,9 +636,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              color: Colors.grey.shade600,
               padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-              child: Text(date, style: TextStyle(color: Colors.white, fontSize: 13)),
+              width: double.infinity,
+              child: Text(
+                  date,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 13,
+                  )
+              ),
             ),
             ListView.separated(
               shrinkWrap: true,
