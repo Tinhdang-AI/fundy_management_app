@@ -4,6 +4,7 @@ import '/screens/expense_screen.dart';
 import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
+import '/utils/message_utils.dart';
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -78,7 +79,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _searchResults = [];
         _allExpenses = [];
       });
-      _showMessage("Không thể tải danh sách giao dịch. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể tải danh sách giao dịch. Vui lòng thử lại sau.");
     }
   }
 
@@ -136,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _isSearching = false;
       });
-      _showMessage("Lỗi khi lọc dữ liệu. Vui lòng thử lại.", isError: true);
+      _showErrorMessage("Lỗi khi lọc dữ liệu. Vui lòng thử lại.");
     }
   }
 
@@ -193,13 +194,13 @@ class _SearchScreenState extends State<SearchScreen> {
       });
 
       _calculateTotals();
-      _showMessage("Đã xóa giao dịch thành công");
+      _showSuccessMessage("Đã xóa giao dịch thành công");
     } catch (e) {
       print("Error deleting expense: $e");
       setState(() {
         _isSearching = false;
       });
-      _showMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.");
     }
   }
 
@@ -261,10 +262,10 @@ class _SearchScreenState extends State<SearchScreen> {
         });
 
         _calculateTotals();
-        _showMessage("Đã cập nhật giao dịch thành công", isError: false);
+        _showSuccessMessage("Đã cập nhật giao dịch thành công");
       }
     } catch (e) {
-      _showMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.");
     } finally {
       setState(() {
         _isSearching = false;
@@ -323,16 +324,11 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Validate input
-              if (_editNoteController.text.trim().isEmpty) {
-                _showMessage("Ghi chú không được để trống", isError: true);
-                return;
-              }
 
               final amount = parseFormattedCurrency(_editAmountController.text);
 
               if (amount <= 0) {
-                _showMessage("Số tiền không hợp lệ", isError: true);
+                _showErrorMessage("Số tiền không hợp lệ");
                 return;
               }
 
@@ -442,13 +438,12 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
+  void _showSuccessMessage(String message) {
+    MessageUtils.showSuccessMessage(context, message);
+  }
+
+  void _showErrorMessage(String message) {
+    MessageUtils.showErrorMessage(context, message);
   }
 
   @override

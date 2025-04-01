@@ -8,6 +8,7 @@ import '/screens/search_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/currency_formatter.dart';
+import '/utils/message_utils.dart';
 
 class ExpenseScreen extends StatefulWidget {
   @override
@@ -193,7 +194,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   Future<void> _saveExpense() async {
     if (amountController.text.isEmpty || selectedCategory.isEmpty) {
-      _showMessage("Vui lòng nhập số tiền và chọn danh mục!");
+      _showErrorMessage("Vui lòng nhập số tiền và chọn danh mục!");
       return;
     }
 
@@ -204,7 +205,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     try {
       double amount = parseFormattedCurrency(amountController.text);
       if (amount <= 0) {
-        _showMessage("Số tiền phải lớn hơn 0!");
+        _showErrorMessage("Số tiền phải lớn hơn 0!");
         setState(() {
           _isLoading = false;
         });
@@ -240,42 +241,22 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       setState(() {
         _isLoading = false;
       });
-      _showMessage("Lỗi: ${e.toString()}");
+      _showErrorMessage("Lỗi: ${e.toString()}");
     }
   }
 
-// Add a new method for success messages with a different style
   void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 10),
-            Text(message),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
+    MessageUtils.showSuccessMessage(context, message);
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+  void _showErrorMessage(String message) {
+    MessageUtils.showErrorMessage(context, message);
   }
 
   void _addNewCategory() {
     if (categoryNameController.text.isEmpty ||
         selectedIconForNewCategory == null) {
-      _showMessage("Vui lòng nhập tên danh mục và chọn biểu tượng!");
+      _showErrorMessage("Vui lòng nhập tên danh mục và chọn biểu tượng!");
       return;
     }
 
@@ -365,7 +346,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         'lastUpdated': FieldValue.serverTimestamp()
       }, SetOptions(merge: true));
     } catch (e) {
-      _showMessage("Lỗi khi lưu danh mục: ${e.toString()}");
+      _showErrorMessage("Lỗi khi lưu danh mục: ${e.toString()}");
     } finally {
       setState(() {
         _isLoading = false;
@@ -411,7 +392,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         'lastUpdated': FieldValue.serverTimestamp()
       }, SetOptions(merge: true));
     } catch (e) {
-      _showMessage("Lỗi khi tạo danh mục mặc định: ${e.toString()}");
+      _showErrorMessage("Lỗi khi tạo danh mục mặc định: ${e.toString()}");
     }
   }
 

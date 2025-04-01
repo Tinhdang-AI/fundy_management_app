@@ -8,6 +8,7 @@ import '/screens/search_screen.dart';
 import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
+import '/utils/message_utils.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -149,12 +150,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
 
       _calculateTotals();
-      _showMessage("Đã xóa giao dịch thành công", isError: false);
+      _showSuccessMessage("Đã xóa giao dịch thành công");
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      _showMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể xóa giao dịch. Vui lòng thử lại sau.");
     }
   }
 
@@ -221,10 +222,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         });
 
         _calculateTotals();
-        _showMessage("Đã cập nhật giao dịch thành công", isError: false);
+        _showSuccessMessage("Đã cập nhật giao dịch thành công");
       }
     } catch (e) {
-      _showMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể cập nhật giao dịch. Vui lòng thử lại sau.");
     } finally {
       setState(() {
         _isLoading = false;
@@ -284,16 +285,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // Validate input
-              if (_editNoteController.text.trim().isEmpty) {
-                _showMessage("Ghi chú không được để trống", isError: true);
-                return;
-              }
 
               final amount = parseFormattedCurrency(_editAmountController.text);
 
               if (amount <= 0) {
-                _showMessage("Số tiền không hợp lệ", isError: true);
+                _showErrorMessage("Số tiền không hợp lệ");
                 return;
               }
 
@@ -371,13 +367,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
+  void _showSuccessMessage(String message) {
+    MessageUtils.showSuccessMessage(context, message);
+  }
+
+  void _showErrorMessage(String message) {
+    MessageUtils.showErrorMessage(context, message);
   }
 
   void _calculateTotals() {
@@ -403,14 +398,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<ExpenseModel> _getExpensesForDay(DateTime day) {
     final date = DateTime(day.year, day.month, day.day);
     return _eventsByDay[date] ?? [];
-  }
-
-  // Hàm để thay đổi tháng
-  void _onPageChanged(DateTime focusedDay) {
-    setState(() {
-      _focusedDay = focusedDay;
-    });
-    _loadMonthData();
   }
 
   void _onItemTapped(int index) {
@@ -442,21 +429,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
       _loadSelectedDayData();
     }
-  }
-
-  // Add a method to change the day
-  void _changeDay(int days) {
-    final newDate = _selectedDay.add(Duration(days: days));
-    setState(() {
-      _selectedDay = newDate;
-
-      // Update focused day if the month changes
-      if (newDate.month != _focusedDay.month || newDate.year != _focusedDay.year) {
-        _focusedDay = DateTime(newDate.year, newDate.month, 1);
-        _loadMonthData();
-      }
-    });
-    _loadSelectedDayData();
   }
 
   @override

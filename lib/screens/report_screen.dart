@@ -8,6 +8,7 @@ import '/screens/search_screen.dart';
 import '../services/database_service.dart';
 import '../models/expense_model.dart';
 import '../utils/currency_formatter.dart';
+import '/utils/message_utils.dart';
 
 class ReportScreen extends StatefulWidget {
   @override
@@ -120,7 +121,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       setState(() {
         _isLoading = false;
       });
-      _showMessage("Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.", isError: true);
+      _showErrorMessage("Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.");
     }
   }
 
@@ -152,7 +153,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         setState(() {
           _isLoading = false;
         });
-        _showMessage("Lỗi tải dữ liệu tháng: ${e.toString()}", isError: true);
+        _showErrorMessage("Lỗi tải dữ liệu tháng: ${e.toString()}");
       }
     }
   }
@@ -206,7 +207,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         setState(() {
           _isLoading = false;
         });
-        _showMessage("Lỗi tải dữ liệu năm: ${e.toString()}", isError: true);
+        _showErrorMessage("Lỗi tải dữ liệu năm: ${e.toString()}");
       }
     }
   }
@@ -261,16 +262,12 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     _loadReportData();
   }
 
-  void _showMessage(String message, {bool isError = false}) {
-    if (!mounted) return;
+  void _showSuccessMessage(String message) {
+    MessageUtils.showSuccessMessage(context, message);
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: Duration(seconds: isError ? 5 : 2),
-      ),
-    );
+  void _showErrorMessage(String message) {
+    MessageUtils.showErrorMessage(context, message);
   }
 
   @override

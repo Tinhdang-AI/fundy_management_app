@@ -12,6 +12,7 @@ import '/screens/report_screen.dart';
 import '/screens/search_screen.dart';
 import '../services/database_service.dart';
 import '../utils/currency_formatter.dart';
+import '/utils/message_utils.dart';
 
 class MoreScreen extends StatefulWidget {
   @override
@@ -171,9 +172,7 @@ class _MoreScreenState extends State<MoreScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Lỗi đăng xuất")),
-      );
+      _showErrorMessage("Lỗi đăng xuất");
     }
   }
 
@@ -225,9 +224,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
           _loadUserStats();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Tất cả dữ liệu đã được xóa thành công")),
-          );
+          _showErrorMessage("Tất cả dữ liệu đã được xóa thành công");
         } else {
           setState(() {
             _isLoading = false;
@@ -237,6 +234,7 @@ class _MoreScreenState extends State<MoreScreen> {
         setState(() {
           _isLoading = false;
         });
+        _showErrorMessage("Lỗi khi đặt lại ứng dụng");
       }
     }
   }
@@ -339,13 +337,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
                   Navigator.pop(context);
 
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã cập nhật đơn vị tiền tệ thành ${selectedCurrency['name']}'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                  _showSuccessMessage('Đã cập nhật đơn vị tiền tệ thành ${selectedCurrency['name']}');
 
                   // Hide loading and refresh
                   this.setState(() {
@@ -362,6 +354,14 @@ class _MoreScreenState extends State<MoreScreen> {
         },
       ),
     );
+  }
+
+  void _showSuccessMessage(String message) {
+    MessageUtils.showSuccessMessage(context, message);
+  }
+
+  void _showErrorMessage(String message) {
+    MessageUtils.showErrorMessage(context, message);
   }
 
   // Current Currency Display
@@ -455,9 +455,7 @@ class _MoreScreenState extends State<MoreScreen> {
             _isLoading = false;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Cập nhật ảnh đại diện thành công")),
-          );
+          _showSuccessMessage("Cập nhật ảnh đại diện thành công");
         } else {
           setState(() {
             _isLoading = false;
@@ -465,9 +463,7 @@ class _MoreScreenState extends State<MoreScreen> {
         }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      _showErrorMessage("Lỗi khi tải ảnh");
     }
   }
 
@@ -547,14 +543,11 @@ class _MoreScreenState extends State<MoreScreen> {
                       _isLoading = false;
                     });
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Cập nhật thông tin thành công")),
-                    );
+                    _showSuccessMessage("Cập nhật thông tin thành công");
+
                   }
                 } catch (e) {
-                  setState(() {
-                    _isLoading = false;
-                  });
+                  _showErrorMessage("Lỗi khi cập nhật thông tin");
                 }
               }
             },
@@ -653,7 +646,7 @@ class _MoreScreenState extends State<MoreScreen> {
       backgroundColor: Colors.orange.shade50,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('Cài đặt', style: TextStyle(color: Colors.black)),
+        title: Text('Khác', style: TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -678,7 +671,6 @@ class _MoreScreenState extends State<MoreScreen> {
             _buildUserHeader(),
             SizedBox(height: 10),
             _buildStats(),
-            SizedBox(height: 10),
             Expanded(
               child: _buildMenuList(),
             ),
@@ -878,13 +870,11 @@ class _MoreScreenState extends State<MoreScreen> {
                     _isLoading = false;
                   });
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Đã gửi phản hồi thành công")),
-                  );
+                  _showSuccessMessage("Đã gửi phản hồi thành công");
+
                 } catch (e) {
-                  setState(() {
-                    _isLoading = false;
-                  });
+                  _showErrorMessage("Lỗi khi gửi phản hồi");
+
                 }
               }
             },
@@ -985,9 +975,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     if (currentPasswordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Vui lòng nhập mật khẩu hiện tại")),
-                      );
+                      _showErrorMessage("Vui lòng nhập mật khẩu hiện tại");
                       return;
                     }
 
@@ -999,32 +987,22 @@ class _MoreScreenState extends State<MoreScreen> {
                     }
 
                     if (confirmPasswordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Vui lòng xác nhận mật khẩu mới")),
-                      );
+                      _showErrorMessage("Vui lòng xác nhận mật khẩu mới");
                       return;
                     }
 
                     if (newPasswordController.text != confirmPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Mật khẩu mới không khớp")),
-                      );
+                      _showErrorMessage("Mật khẩu mới không khớp");
                       return;
                     }
 
                     if (newPasswordController.text.length < 6) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Mật khẩu mới phải có ít nhất 6 ký tự")),
-                      );
+                      _showErrorMessage("Mật khẩu mới phải có ít nhất 6 ký tự");
                       return;
                     }
 
                     if (currentPasswordController.text == newPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Mật khẩu mới không được giống mật khẩu hiện tại"),
-                        ),
-                      );
+                      _showErrorMessage("Mật khẩu mới không được giống mật khẩu hiện tại");
                       return;
                     }
 
@@ -1050,29 +1028,13 @@ class _MoreScreenState extends State<MoreScreen> {
                           if (result.user != null) {
                             try {
                               await user.updatePassword(newPassword);
-                              Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Đổi mật khẩu thành công"),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                               _showSuccessMessage("Đổi mật khẩu thành công");
                             } catch (passwordUpdateError) {
-                              Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Lỗi đổi mật khẩu"),
-                                ),
-                              );
+                              _showErrorMessage("Lỗi đổi mật khẩu");
                             }
                           }
                         } on FirebaseAuthException catch (e) {
-                          Navigator.pop(dialogContext);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text("Mật khẩu hiện tại không đúng"),
-                            ),
-                          );
+                          _showErrorMessage("Mật khẩu hiện tại không đúng");
                         } catch (e) {
                           Navigator.pop(dialogContext);
                         }
