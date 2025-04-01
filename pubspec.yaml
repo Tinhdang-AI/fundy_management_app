@@ -37,7 +37,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/google_icon.png
-    - assets/logo_icon.png
+    - assets/logo_e.png
 
   uses-material-design: true
 
