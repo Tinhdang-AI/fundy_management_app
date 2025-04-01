@@ -42,6 +42,6 @@ flutter:
   uses-material-design: true
 
 flutter_icons:
-  image_path: "assets/logo_icon.png"
+  image_path: "assets/logo_e.png"
   android: true
   remove_alpha_android: true
