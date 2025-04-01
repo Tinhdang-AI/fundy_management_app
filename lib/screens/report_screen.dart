@@ -524,20 +524,18 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tiêu đề ngày - sửa giống tiêu đề tháng
                   Container(
                     padding: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                     width: double.infinity,
                     child: Text(
                         date,
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,  // In đậm
+                          fontWeight: FontWeight.bold, 
                           fontSize: 13,
                         )
                     ),
                   ),
 
-                  // Danh sách giao dịch của ngày đó
                   ListView.separated(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
