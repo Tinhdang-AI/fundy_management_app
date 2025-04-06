@@ -2,121 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
-import '../utils/currency_formatter.dart';
-import '/utils/message_utils.dart';
+import 'currency_formatter.dart';
+import 'message_utils.dart';
 
 class TransactionUtils {
-  static final DatabaseService _databaseService = DatabaseService();
-
-  // Edit transaction
-  static Future<bool> editTransaction(
-      BuildContext context,
+  // Edit a transaction
+  static Future<TransactionResult> editTransaction(
       ExpenseModel expense,
-      Function onSuccess,
-      {Function? onLoading}
-      ) async {
-    // Show edit dialog
-    final result = await showEditDialog(context, expense);
-
-    if (result == null || !result.updated) {
-      return false; // User cancelled or no changes
-    }
-
-    if (onLoading != null) {
-      onLoading(true);
-    }
-
+      DatabaseService databaseService) async {
     try {
-      // Kiểm tra xem có thay đổi nào không
-      if (result.amount != expense.amount ||
-          result.note != expense.note ||
-          !_isSameDay(result.date, expense.date)) {
+      // Get the updated expense from the database after update
+      await databaseService.updateExpense(expense);
 
-        final updatedExpense = ExpenseModel(
-          id: expense.id,
-          userId: expense.userId,
-          note: result.note,
-          amount: result.amount,
-          category: expense.category,
-          categoryIcon: expense.categoryIcon,
-          date: result.date,
-          isExpense: expense.isExpense,
-        );
-
-        await _databaseService.updateExpense(updatedExpense);
-
-        // Notify caller about successful update
-        onSuccess(updatedExpense);
-
-        // Show success message
-        MessageUtils.showSuccessMessage(context, "Đã cập nhật giao dịch thành công");
-        return true;
-      }
+      return TransactionResult(
+        success: true,
+        updatedExpense: expense,
+      );
     } catch (e) {
-      MessageUtils.showErrorMessage(context, "Không thể cập nhật giao dịch. Vui lòng thử lại sau.");
-    } finally {
-      if (onLoading != null) {
-        onLoading(false);
-      }
+      print("Error updating transaction: $e");
+      return TransactionResult(
+        success: false,
+        errorMessage: "Lỗi cập nhật giao dịch: ${e.toString()}",
+      );
     }
-
-    return false;
   }
 
-  // Hàm so sánh xem có phải cùng một ngày không
-  static bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
-  }
-
-  // Delete transaction
+  // Delete a transaction
   static Future<bool> deleteTransaction(
-      BuildContext context,
-      ExpenseModel expense,
-      Function onSuccess,
-      {Function? onLoading}
-      ) async {
-    // Show confirmation dialog
-    final confirmed = await showDeleteConfirmation(context, expense);
-
-    if (confirmed != true) {
-      return false; // User cancelled
-    }
-
-    if (onLoading != null) {
-      onLoading(true);
-    }
-
+      String expenseId,
+      DatabaseService databaseService) async {
     try {
-      await _databaseService.deleteExpense(expense.id);
-
-      // Notify caller about successful deletion
-      onSuccess();
-
-      // Show success message
-      MessageUtils.showSuccessMessage(context, "Đã xóa giao dịch thành công");
+      await databaseService.deleteExpense(expenseId);
       return true;
     } catch (e) {
-      MessageUtils.showErrorMessage(context, "Không thể xóa giao dịch. Vui lòng thử lại sau.");
-    } finally {
-      if (onLoading != null) {
-        onLoading(false);
-      }
+      print("Error deleting transaction: $e");
+      return false;
     }
-
-    return false;
   }
 
-  // Show action menu on long press
+  // Show action menu for a transaction
   static void showActionMenu(
       BuildContext context,
       ExpenseModel expense,
       Function onEdit,
-      Function onDelete
-      ) {
+      Function onDelete) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       builder: (BuildContext context) {
         return SafeArea(
           child: Column(
@@ -150,58 +82,101 @@ class TransactionUtils {
     );
   }
 
-  // Show edit dialog with current values
+  // Show edit dialog
   static Future<EditResult?> showEditDialog(
       BuildContext context,
-      ExpenseModel expense
-      ) {
+      ExpenseModel expense,
+      List<Map<String, dynamic>> categoryList) {
     final TextEditingController noteController = TextEditingController(text: expense.note);
-    final TextEditingController amountController = TextEditingController(text: formatCurrency.format(expense.amount));
 
-    // Hiển thị danh mục (không cho phép thay đổi)
-    String category = expense.category;
+    // Convert the amount from VND to current currency
+    final double convertedAmount = convertFromVND(expense.amount);
+    final TextEditingController amountController = TextEditingController(
+        text: formatCurrency.format(convertedAmount));
 
-    // Lưu lại giá trị ban đầu của ngày
+    // Keep original date value
     DateTime selectedDate = expense.date;
 
-    // Hiển thị dưới dạng định dạng dd/MM/yyyy
+    // Khởi tạo danh mục đã chọn và biểu tượng danh mục
+    String selectedCategory = expense.category;
+    String selectedCategoryIcon = expense.categoryIcon;
+
+    // Format date as dd/MM/yyyy
     final dateController = TextEditingController(
-        text: DateFormat('dd/MM/yyyy').format(selectedDate)
-    );
+        text: DateFormat('dd/MM/yyyy').format(selectedDate));
+
 
     return showDialog<EditResult?>(
       context: context,
       builder: (context) => StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
+        builder: (context, setState) {
+          return Theme(
+            // Áp dụng theme riêng cho dialog này
+            data: Theme.of(context).copyWith(
+              textSelectionTheme: TextSelectionThemeData(
+                cursorColor: Colors.orange,
+                selectionColor: Colors.orange.withOpacity(0.3),
+                selectionHandleColor: Colors.orange,
+              ),
+            ),
+            child: AlertDialog(
               title: Text('Chỉnh sửa giao dịch'),
+              backgroundColor: Colors.white,
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Hiển thị danh mục (không cho phép thay đổi)
+                    // Phần danh mục có thể chọn
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Danh mục:', style: TextStyle(fontWeight: FontWeight.bold)),
                         SizedBox(height: 8),
-                        Container(
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                IconData(int.parse(expense.categoryIcon), fontFamily: 'MaterialIcons'),
-                                color: Colors.orange,
-                              ),
-                              SizedBox(width: 8),
-                              Text(expense.category, style: TextStyle(fontSize: 16))
-                            ],
+                        // Container có thể nhấn để mở dialog chọn danh mục
+                        GestureDetector(
+                          onTap: () {
+                            // Hiển thị dialog chọn danh mục
+                            _showCategorySelectionDialog(
+                                context,
+                                categoryList,
+                                expense.isExpense,
+                                selectedCategory,
+                                    (category, icon) {
+                                  setState(() {
+                                    selectedCategory = category;
+                                    selectedCategoryIcon = icon;
+                                  });
+                                }
+                            );
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.black, width: 1.0),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Phần hiển thị danh mục đã chọn
+                                Row(
+                                  children: [
+                                    Icon(
+                                      IconData(int.parse(selectedCategoryIcon), fontFamily: 'MaterialIcons'),
+                                      color: Colors.orange,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(selectedCategory,
+                                        style: TextStyle(fontSize: 16, color: Colors.black)
+                                    ),
+                                  ],
+                                ),
+                                // Thêm icon để cho biết có thể nhấn vào
+                                Icon(Icons.arrow_drop_down, color: Colors.black),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -209,25 +184,25 @@ class TransactionUtils {
 
                     SizedBox(height: 16),
 
-                    // Ghi chú
+                    // Note field
                     TextField(
                       controller: noteController,
+                      style: TextStyle(color: Colors.black),
                       decoration: InputDecoration(
                         labelText: 'Ghi chú',
-                        border: OutlineInputBorder(),
                       ),
                     ),
 
                     SizedBox(height: 16),
 
-                    // Số tiền
+                    // Amount field
                     TextField(
                       controller: amountController,
+                      style: TextStyle(color: Colors.black),
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'Số tiền',
-                        border: OutlineInputBorder(),
-                        suffix: Text(getCurrentSymbol()),
+                        suffix: Text(getCurrentSymbol(), style: TextStyle(color: Colors.black)),
                       ),
                       inputFormatters: [
                         CurrencyInputFormatter(),
@@ -236,7 +211,7 @@ class TransactionUtils {
 
                     SizedBox(height: 16),
 
-                    // Ngày giao dịch
+                    // Date picker
                     GestureDetector(
                       onTap: () async {
                         final DateTime? picked = await showDatePicker(
@@ -267,10 +242,10 @@ class TransactionUtils {
                       child: AbsorbPointer(
                         child: TextField(
                           controller: dateController,
+                          style: TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: 'Ngày',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.calendar_today),
+                            suffixIcon: Icon(Icons.calendar_today, color: Colors.black),
                           ),
                         ),
                       ),
@@ -285,44 +260,129 @@ class TransactionUtils {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final amount = parseFormattedCurrency(amountController.text);
+                    // Parse the amount in current currency and convert back to VND
+                    final amount = convertToVND(parseFormattedCurrency(amountController.text));
                     final note = noteController.text.trim();
 
                     if (amount <= 0) {
+                      // Show error
                       MessageUtils.showErrorMessage(context, "Số tiền không hợp lệ");
                       return;
                     }
 
-                    Navigator.pop(
+                    // Check if there are any changes
+                    bool hasChanges = note != expense.note ||
+                        amount != expense.amount ||
+                        !isSameDay(selectedDate, expense.date) ||
+                        selectedCategory != expense.category ||
+                        selectedCategoryIcon != expense.categoryIcon;
+
+                    // Return updated expense if there are changes
+                    if (hasChanges) {
+                      Navigator.pop(
                         context,
                         EditResult(
-                            note: note,
-                            amount: amount,
-                            category: expense.category,
-                            categoryIcon: expense.categoryIcon,
-                            date: selectedDate,
-                            updated: note != expense.note ||
-                                amount != expense.amount ||
-                                !_isSameDay(selectedDate, expense.date)
-                        )
-                    );
+                          note: note,
+                          amount: amount,
+                          date: selectedDate,
+                          category: selectedCategory,
+                          categoryIcon: selectedCategoryIcon,
+                          updated: true,
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(
+                        context,
+                        EditResult(
+                          note: note,
+                          amount: amount,
+                          date: selectedDate,
+                          category: selectedCategory,
+                          categoryIcon: selectedCategoryIcon,
+                          updated: false,
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                   child: Text('Lưu'),
                 ),
               ],
-            );
-          }
+            ),
+          );
+        },
       ),
     );
   }
 
+  static void _showCategorySelectionDialog(
+      BuildContext context,
+      List<Map<String, dynamic>> categoryList,
+      bool isExpense,
+      String currentCategory,
+      Function(String, String) onCategorySelected) {
+
+    // Lọc danh sách danh mục theo loại (thu/chi) VÀ loại bỏ mục "Chỉnh sửa"
+    final filteredCategories = categoryList.where((category) =>
+    category['isExpense'] == isExpense &&
+        category['name'] != "Chỉnh sửa" // Loại bỏ mục "Chỉnh sửa"
+    ).toList();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isExpense ? 'Chọn danh mục chi' : 'Chọn danh mục thu'),
+          backgroundColor: Colors.white,
+          content: Container(
+            width: double.maxFinite,
+            height: 300,
+            child: filteredCategories.isEmpty
+                ? Center(child: Text('Không có danh mục nào.'))
+                : ListView.builder(
+              shrinkWrap: true,
+              itemCount: filteredCategories.length,
+              itemBuilder: (context, index) {
+                final category = filteredCategories[index];
+                final isSelected = category['name'] == currentCategory;
+
+                return ListTile(
+                  leading: Icon(
+                    IconData(int.parse(category['icon']), fontFamily: 'MaterialIcons'),
+                    color: Colors.orange,
+                  ),
+                  title: Text(category['name'], style: TextStyle(color: Colors.black)),
+                  selected: isSelected,
+                  selectedTileColor: Colors.orange.shade50,
+                  trailing: isSelected ? Icon(Icons.check, color: Colors.green) : null,
+                  onTap: () {
+                    onCategorySelected(category['name'], category['icon']);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Show delete confirmation dialog
-  static Future<bool?> showDeleteConfirmation(BuildContext context, ExpenseModel expense) {
+  static Future<bool?> showDeleteConfirmation(
+      BuildContext context,
+      ExpenseModel expense) {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Xác nhận xóa'),
+        backgroundColor: Colors.white,
         content: Text(
             'Bạn có chắc chắn muốn xóa khoản ${expense.isExpense ? "chi" : "thu"} "${expense.note}" với số tiền ${formatCurrencyWithSymbol(expense.amount)} không?'
         ),
@@ -340,23 +400,40 @@ class TransactionUtils {
       ),
     );
   }
+
+  // Check if two dates are on the same day
+  static bool isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 }
 
-// Class to hold edit dialog results
+// Result classes
+class TransactionResult {
+  final bool success;
+  final String? errorMessage;
+  final ExpenseModel? updatedExpense;
+
+  TransactionResult({
+    required this.success,
+    this.errorMessage,
+    this.updatedExpense,
+  });
+}
+
 class EditResult {
   final String note;
   final double amount;
-  final String category;
-  final String categoryIcon;
   final DateTime date;
+  final String category;       // Thêm trường category
+  final String categoryIcon;   // Thêm trường categoryIcon
   final bool updated;
 
   EditResult({
     required this.note,
     required this.amount,
+    required this.date,
     required this.category,
     required this.categoryIcon,
-    required this.date,
-    required this.updated
+    required this.updated,
   });
 }

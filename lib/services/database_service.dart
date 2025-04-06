@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import '../models/expense_model.dart';
 import '../models/user_model.dart';
 
@@ -7,28 +8,114 @@ class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Lấy ID của người dùng hiện tại
+  // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;
 
   // Collection references
   CollectionReference get usersCollection => _firestore.collection('users');
   CollectionReference get expensesCollection => _firestore.collection('expenses');
 
-  // Lưu thông tin người dùng khi đăng ký
-  Future<void> saveUserInfo(String name, String email) async {
+  // Save user info
+  Future<void> saveUserInfo(String name, String email, {String? profileImageUrl}) async {
     if (currentUserId == null) return;
 
-    UserModel user = UserModel(
-      id: currentUserId!,
-      name: name,
-      email: email,
-      createdAt: DateTime.now(),
-    );
-
-    await usersCollection.doc(currentUserId).set(user.toMap());
+    await usersCollection.doc(currentUserId).set({
+      'name': name,
+      'email': email,
+      'createdAt': FieldValue.serverTimestamp(),
+      if (profileImageUrl != null) 'profileImageUrl': profileImageUrl,
+    }, SetOptions(merge: true));
   }
 
-  // Thêm một khoản chi tiêu/thu nhập
+  // Get user by ID
+  Future<UserModel?> getUserById(String userId) async {
+    DocumentSnapshot doc = await usersCollection.doc(userId).get();
+    if (doc.exists) {
+      return UserModel.fromFirestore(doc);
+    }
+    return null;
+  }
+
+  // Save categories to Firebase
+  Future<void> saveCategories({
+    required List<Map<String, dynamic>> expenseCategories,
+    required List<Map<String, dynamic>> incomeCategories
+  }) async {
+    if (currentUserId == null) return;
+
+    // Convert categories to serializable format
+    List<Map<String, dynamic>> serializableExpenseCategories = expenseCategories.map((category) {
+      return {
+        "label": category["label"],
+        "iconCode": (category["icon"] as IconData).codePoint,
+        "fontFamily": "MaterialIcons"
+      };
+    }).toList();
+
+    List<Map<String, dynamic>> serializableIncomeCategories = incomeCategories.map((category) {
+      return {
+        "label": category["label"],
+        "iconCode": (category["icon"] as IconData).codePoint,
+        "fontFamily": "MaterialIcons"
+      };
+    }).toList();
+
+    // Save to Firestore
+    await usersCollection.doc(currentUserId).set({
+      'expenseCategories': serializableExpenseCategories,
+      'incomeCategories': serializableIncomeCategories,
+      'lastUpdated': FieldValue.serverTimestamp()
+    }, SetOptions(merge: true));
+  }
+
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    if (currentUserId == null) {
+      return [];
+    }
+
+    try {
+      // Lấy document của user
+      DocumentSnapshot userDoc = await usersCollection.doc(currentUserId).get();
+
+      if (!userDoc.exists) {
+        return [];
+      }
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+
+      // Lấy danh sách danh mục chi tiêu
+      List<Map<String, dynamic>> expenseCategories = [];
+      if (userData.containsKey('expenseCategories')) {
+        for (var category in userData['expenseCategories']) {
+          expenseCategories.add({
+            'name': category['label'],
+            'icon': category['iconCode'].toString(),
+            'isExpense': true
+          });
+        }
+      }
+
+      // Lấy danh sách danh mục thu nhập
+      List<Map<String, dynamic>> incomeCategories = [];
+      if (userData.containsKey('incomeCategories')) {
+        for (var category in userData['incomeCategories']) {
+          incomeCategories.add({
+            'name': category['label'],
+            'icon': category['iconCode'].toString(),
+            'isExpense': false
+          });
+        }
+      }
+
+      // Kết hợp hai danh sách
+      return [...expenseCategories, ...incomeCategories];
+    } catch (e) {
+      print("Error getting categories: $e");
+      return [];
+    }
+  }
+
+  // Add expense/income transaction
   Future<String> addExpense({
     required String note,
     required double amount,
@@ -37,7 +124,7 @@ class DatabaseService {
     required DateTime date,
     required bool isExpense,
   }) async {
-    if (currentUserId == null) throw Exception('Người dùng chưa đăng nhập');
+    if (currentUserId == null) throw Exception('User not logged in');
 
     ExpenseModel expense = ExpenseModel(
       id: '',
@@ -51,70 +138,46 @@ class DatabaseService {
     );
 
     DocumentReference docRef = await expensesCollection.add(expense.toMap());
-
-    // Cập nhật ID sau khi thêm vào Firestore
     await docRef.update({'id': docRef.id});
 
     return docRef.id;
   }
 
-  // Cập nhật một khoản chi tiêu/thu nhập
+  // Update an expense/income
   Future<void> updateExpense(ExpenseModel expense) async {
     await expensesCollection.doc(expense.id).update(expense.toMap());
   }
 
-  // Xóa một khoản chi tiêu/thu nhập
+  // Delete an expense/income
   Future<void> deleteExpense(String expenseId) async {
     await expensesCollection.doc(expenseId).delete();
   }
 
-  // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng
+  // Get all user expenses
   Stream<List<ExpenseModel>> getUserExpenses() {
     if (currentUserId == null) {
       return Stream.value([]);
     }
 
-    try {
-      return expensesCollection
-          .where('userId', isEqualTo: currentUserId)
-          .orderBy('date', descending: true)
-          .snapshots()
-          .map((snapshot) {
-        List<ExpenseModel> expenses = snapshot.docs
-            .map((doc) => ExpenseModel.fromFirestore(doc))
-            .toList();
-        print("Retrieved ${expenses.length} total expenses");
-        return expenses;
-      });
-    } catch (e) {
-      print("Error in getUserExpenses: $e");
-      return Stream.value([]);
-    }
+    return expensesCollection
+        .where('userId', isEqualTo: currentUserId)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
+    });
   }
 
-  // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một ngày cụ thể (Future)
+  // Get expenses by date (Future)
   Future<List<ExpenseModel>> getExpensesByDateFuture(DateTime date) async {
     if (currentUserId == null) {
-      print("getExpensesByDateFuture: currentUserId is null");
       return [];
     }
 
     try {
-      // Tạo ngày bắt đầu (00:00:00) và ngày kết thúc (23:59:59)
       DateTime startDate = DateTime(date.year, date.month, date.day);
       DateTime endDate = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
 
-      print("Future: Fetching expenses from ${startDate.toString()} to ${endDate.toString()} for user $currentUserId");
-
-      // Kiểm tra xem người dùng có dữ liệu không
-      QuerySnapshot countSnapshot = await expensesCollection
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
-          .get();
-
-      print("User has data: ${countSnapshot.docs.isNotEmpty}");
-
-      // Thực hiện truy vấn với bộ lọc ngày
       QuerySnapshot snapshot = await expensesCollection
           .where('userId', isEqualTo: currentUserId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
@@ -122,50 +185,27 @@ class DatabaseService {
           .orderBy('date', descending: true)
           .get();
 
-      List<ExpenseModel> expenses = [];
-      for (var doc in snapshot.docs) {
-        try {
-          ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-          expenses.add(expense);
-        } catch (parseError) {
-          print("Error parsing document ${doc.id}: $parseError");
-        }
-      }
-
-      print("Future: Found ${expenses.length} expenses for date ${date.toString()}");
-      return expenses;
+      return snapshot.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
     } catch (e) {
       print("Error in getExpensesByDateFuture: $e");
 
-      // Fallback - try to get all expenses and filter manually
+      // Fallback query
       try {
-        print("Attempting fallback query for date ${date.toString()}");
         QuerySnapshot snapshot = await expensesCollection
             .where('userId', isEqualTo: currentUserId)
             .get();
 
-        List<ExpenseModel> allExpenses = [];
-        for (var doc in snapshot.docs) {
-          try {
-            ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-            allExpenses.add(expense);
-          } catch (parseError) {
-            print("Error parsing document in fallback: $parseError");
-          }
-        }
+        List<ExpenseModel> expenses = snapshot.docs
+            .map((doc) => ExpenseModel.fromFirestore(doc))
+            .toList();
 
-        // Filter on the client side
         DateTime startDate = DateTime(date.year, date.month, date.day);
         DateTime endDate = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
 
-        List<ExpenseModel> filteredExpenses = allExpenses.where((expense) {
-          DateTime expDate = expense.date;
-          return (expDate.isAfter(startDate) || isSameDateTime(expDate, startDate)) &&
-              (expDate.isBefore(endDate) || isSameDateTime(expDate, endDate));
+        return expenses.where((expense) {
+          return expense.date.isAfter(startDate.subtract(Duration(seconds: 1))) &&
+              expense.date.isBefore(endDate.add(Duration(seconds: 1)));
         }).toList();
-
-        print("Fallback found ${filteredExpenses.length} expenses for date ${date.toString()}");
-        return filteredExpenses;
       } catch (fallbackError) {
         print("Fallback query also failed: $fallbackError");
         return [];
@@ -173,31 +213,18 @@ class DatabaseService {
     }
   }
 
-  // Lấy tất cả các khoản chi tiêu/thu nhập của người dùng trong một tháng cụ thể (Future)
+  // Get expenses by month (Future)
   Future<List<ExpenseModel>> getExpensesByMonthFuture(int month, int year) async {
     if (currentUserId == null) {
-      print("getExpensesByMonthFuture: currentUserId is null");
       return [];
     }
 
     try {
-      // Fix date range calculation
       DateTime startDate = DateTime(year, month, 1);
       DateTime endDate = month < 12
           ? DateTime(year, month + 1, 1).subtract(Duration(milliseconds: 1))
           : DateTime(year + 1, 1, 1).subtract(Duration(milliseconds: 1));
 
-      print("Future: Fetching monthly expenses from ${startDate.toString()} to ${endDate.toString()} for user $currentUserId");
-
-      // First, check if the query would execute successfully
-      QuerySnapshot countSnapshot = await expensesCollection
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
-          .get();
-
-      print("User has data: ${countSnapshot.docs.isNotEmpty}");
-
-      // Execute the actual query with date filters
       QuerySnapshot snapshot = await expensesCollection
           .where('userId', isEqualTo: currentUserId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
@@ -205,53 +232,29 @@ class DatabaseService {
           .orderBy('date', descending: true)
           .get();
 
-      // Process results
-      List<ExpenseModel> expenses = [];
-      for (var doc in snapshot.docs) {
-        try {
-          ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-          expenses.add(expense);
-        } catch (parseError) {
-          print("Error parsing document ${doc.id}: $parseError");
-        }
-      }
-
-      print("Future: Found ${expenses.length} expenses for month $month/$year");
-      return expenses;
+      return snapshot.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
     } catch (e) {
       print("Error in getExpensesByMonthFuture: $e");
 
-      // Try a simpler query as fallback
+      // Fallback query
       try {
-        print("Attempting fallback query for month $month/$year");
         QuerySnapshot snapshot = await expensesCollection
             .where('userId', isEqualTo: currentUserId)
             .get();
 
-        List<ExpenseModel> allExpenses = [];
-        for (var doc in snapshot.docs) {
-          try {
-            ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-            allExpenses.add(expense);
-          } catch (parseError) {
-            print("Error parsing document in fallback: $parseError");
-          }
-        }
+        List<ExpenseModel> expenses = snapshot.docs
+            .map((doc) => ExpenseModel.fromFirestore(doc))
+            .toList();
 
-        // Filter on the client side
         DateTime startDate = DateTime(year, month, 1);
         DateTime endDate = month < 12
             ? DateTime(year, month + 1, 1).subtract(Duration(milliseconds: 1))
             : DateTime(year + 1, 1, 1).subtract(Duration(milliseconds: 1));
 
-        List<ExpenseModel> filteredExpenses = allExpenses.where((expense) {
-          DateTime expDate = expense.date;
-          return (expDate.isAfter(startDate) || isSameDateTime(expDate, startDate)) &&
-              (expDate.isBefore(endDate) || isSameDateTime(expDate, endDate));
+        return expenses.where((expense) {
+          return expense.date.isAfter(startDate.subtract(Duration(seconds: 1))) &&
+              expense.date.isBefore(endDate.add(Duration(seconds: 1)));
         }).toList();
-
-        print("Fallback found ${filteredExpenses.length} expenses for month $month/$year");
-        return filteredExpenses;
       } catch (fallbackError) {
         print("Fallback query also failed: $fallbackError");
         return [];
@@ -259,10 +262,9 @@ class DatabaseService {
     }
   }
 
-  // Lấy thông tin chi tiêu theo năm (Future)
+  // Get expenses by year (Future)
   Future<List<ExpenseModel>> getExpensesByYearFuture(int year) async {
     if (currentUserId == null) {
-      print("getExpensesByYearFuture: currentUserId is null");
       return [];
     }
 
@@ -270,17 +272,6 @@ class DatabaseService {
       DateTime startDate = DateTime(year, 1, 1);
       DateTime endDate = DateTime(year + 1, 1, 1).subtract(Duration(milliseconds: 1));
 
-      print("Future: Fetching yearly expenses from ${startDate.toString()} to ${endDate.toString()} for user $currentUserId");
-
-      // First, check if the query would execute successfully
-      QuerySnapshot countSnapshot = await expensesCollection
-          .where('userId', isEqualTo: currentUserId)
-          .limit(1)
-          .get();
-
-      print("User has data: ${countSnapshot.docs.isNotEmpty}");
-
-      // Execute the actual query with date filters
       QuerySnapshot snapshot = await expensesCollection
           .where('userId', isEqualTo: currentUserId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
@@ -288,51 +279,27 @@ class DatabaseService {
           .orderBy('date', descending: true)
           .get();
 
-      // Process results
-      List<ExpenseModel> expenses = [];
-      for (var doc in snapshot.docs) {
-        try {
-          ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-          expenses.add(expense);
-        } catch (parseError) {
-          print("Error parsing document ${doc.id}: $parseError");
-        }
-      }
-
-      print("Future: Found ${expenses.length} expenses for year $year");
-      return expenses;
+      return snapshot.docs.map((doc) => ExpenseModel.fromFirestore(doc)).toList();
     } catch (e) {
       print("Error in getExpensesByYearFuture: $e");
 
-      // Try a simpler query as fallback
+      // Fallback query
       try {
-        print("Attempting fallback query for year $year");
         QuerySnapshot snapshot = await expensesCollection
             .where('userId', isEqualTo: currentUserId)
             .get();
 
-        List<ExpenseModel> allExpenses = [];
-        for (var doc in snapshot.docs) {
-          try {
-            ExpenseModel expense = ExpenseModel.fromFirestore(doc);
-            allExpenses.add(expense);
-          } catch (parseError) {
-            print("Error parsing document in fallback: $parseError");
-          }
-        }
+        List<ExpenseModel> expenses = snapshot.docs
+            .map((doc) => ExpenseModel.fromFirestore(doc))
+            .toList();
 
-        // Filter on the client side
         DateTime startDate = DateTime(year, 1, 1);
         DateTime endDate = DateTime(year + 1, 1, 1).subtract(Duration(milliseconds: 1));
 
-        List<ExpenseModel> filteredExpenses = allExpenses.where((expense) {
-          DateTime expDate = expense.date;
-          return (expDate.isAfter(startDate) || isSameDateTime(expDate, startDate)) &&
-              (expDate.isBefore(endDate) || isSameDateTime(expDate, endDate));
+        return expenses.where((expense) {
+          return expense.date.isAfter(startDate.subtract(Duration(seconds: 1))) &&
+              expense.date.isBefore(endDate.add(Duration(seconds: 1)));
         }).toList();
-
-        print("Fallback found ${filteredExpenses.length} expenses for year $year");
-        return filteredExpenses;
       } catch (fallbackError) {
         print("Fallback query also failed: $fallbackError");
         return [];
@@ -340,115 +307,7 @@ class DatabaseService {
     }
   }
 
-  // Lấy tổng chi tiêu theo tháng
-  Future<double> getTotalExpensesByMonth(int month, int year) async {
-    try {
-      List<ExpenseModel> monthlyExpenses = await getExpensesByMonthFuture(month, year);
-      double total = 0;
-      for (var expense in monthlyExpenses) {
-        if (expense.isExpense) {
-          total += expense.amount;
-        }
-      }
-      return total;
-    } catch (e) {
-      print("Error getting total expenses by month: $e");
-      return 0;
-    }
-  }
-
-  // Lấy tổng thu nhập theo tháng
-  Future<double> getTotalIncomeByMonth(int month, int year) async {
-    try {
-      List<ExpenseModel> monthlyExpenses = await getExpensesByMonthFuture(month, year);
-      double total = 0;
-      for (var expense in monthlyExpenses) {
-        if (!expense.isExpense) {
-          total += expense.amount;
-        }
-      }
-      return total;
-    } catch (e) {
-      print("Error getting total income by month: $e");
-      return 0;
-    }
-  }
-
-  // Lấy tổng chi tiêu theo năm
-  Future<double> getTotalExpensesByYear(int year) async {
-    try {
-      List<ExpenseModel> yearlyExpenses = await getExpensesByYearFuture(year);
-      double total = 0;
-      for (var expense in yearlyExpenses) {
-        if (expense.isExpense) {
-          total += expense.amount;
-        }
-      }
-      return total;
-    } catch (e) {
-      print("Error getting total expenses by year: $e");
-      return 0;
-    }
-  }
-
-  // Lấy tổng thu nhập theo năm
-  Future<double> getTotalIncomeByYear(int year) async {
-    try {
-      List<ExpenseModel> yearlyExpenses = await getExpensesByYearFuture(year);
-      double total = 0;
-      for (var expense in yearlyExpenses) {
-        if (!expense.isExpense) {
-          total += expense.amount;
-        }
-      }
-      return total;
-    } catch (e) {
-      print("Error getting total income by year: $e");
-      return 0;
-    }
-  }
-
-  // Lấy thông tin chi tiêu theo danh mục cho báo cáo tháng
-  Future<Map<String, double>> getExpensesByCategory(int month, int year) async {
-    try {
-      List<ExpenseModel> monthlyExpenses = await getExpensesByMonthFuture(month, year);
-      Map<String, double> categoryTotals = {};
-
-      for (var expense in monthlyExpenses) {
-        if (expense.isExpense) {
-          String category = expense.category;
-          categoryTotals[category] = (categoryTotals[category] ?? 0) + expense.amount;
-        }
-      }
-
-      return categoryTotals;
-    } catch (e) {
-      print("Error getting expenses by category: $e");
-      return {};
-    }
-  }
-
-  // Lấy thông tin chi tiêu theo danh mục cho báo cáo năm
-  Future<Map<String, double>> getExpensesByCategoryForYear(int year) async {
-    try {
-      List<ExpenseModel> yearlyExpenses = await getExpensesByYearFuture(year);
-      Map<String, double> categoryTotals = {};
-
-      for (var expense in yearlyExpenses) {
-        if (expense.isExpense) {
-          String category = expense.category;
-          categoryTotals[category] = (categoryTotals[category] ?? 0) + expense.amount;
-        }
-      }
-
-      return categoryTotals;
-    } catch (e) {
-      print("Error getting expenses by category for year: $e");
-      return {};
-    }
-  }
-
-  // Kiểm tra xem người dùng có dữ liệu nào không
+  // Check if user has any data
   Future<bool> hasAnyData() async {
     if (currentUserId == null) return false;
 
@@ -465,13 +324,22 @@ class DatabaseService {
     }
   }
 
-  // Hàm trợ giúp để so sánh hai DateTime đến giây
-  bool isSameDateTime(DateTime a, DateTime b) {
-    return a.year == b.year &&
-        a.month == b.month &&
-        a.day == b.day &&
-        a.hour == b.hour &&
-        a.minute == b.minute &&
-        a.second == b.second;
+  // Submit user feedback
+  Future<void> submitFeedback(String feedback, String appVersion) async {
+    if (currentUserId == null) return;
+
+    try {
+      await _firestore.collection('feedback').add({
+        'userId': currentUserId,
+        'userName': _auth.currentUser?.displayName ?? 'Unknown',
+        'userEmail': _auth.currentUser?.email ?? 'Unknown',
+        'feedback': feedback,
+        'timestamp': FieldValue.serverTimestamp(),
+        'appVersion': appVersion
+      });
+    } catch (e) {
+      print("Error submitting feedback: $e");
+      throw e;
+    }
   }
 }
