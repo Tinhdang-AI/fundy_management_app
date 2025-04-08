@@ -9,7 +9,7 @@ import '../../utils/message_utils.dart';
 import '../../utils/transaction_utils.dart';
 import '../widgets/app_bottom_navigation_bar.dart';
 import '../widgets/grouped_transaction_list.dart';
-import '../widgets/transaction_action_menu.dart';
+import '../../utils/transaction_helper.dart';
 
 class ReportScreen extends StatefulWidget {
   @override
@@ -233,7 +233,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Chi tiêu:',
+                        'Chi tiêu: ',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -267,7 +267,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Thu nhập:',
+                        'Thu nhập: ',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -302,7 +302,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Thu chi:',
+                  'Thu chi: ',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -658,22 +658,17 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
           )
               : GroupedTransactionList(
             transactions: viewModel.categoryTransactions,
-            onLongPress: (context, expense) => _showActionMenu(context, expense, viewModel),
-          ),
+            onLongPress: (context, expense) =>
+                TransactionHelper.showActionMenu(
+                    context,
+                    expense,
+                    viewModel,
+                    null,
+                    null
+                ),
+            ),
         ),
       ],
-    );
-  }
-
-  void _showActionMenu(BuildContext context, ExpenseModel expense, ReportViewModel viewModel) {
-    TransactionActionMenu.show(
-      context: context,
-      expense: expense,
-      viewModel: viewModel,
-      onEditSuccess: (updatedExpense) async {
-      },
-      onDeleteSuccess: (deletedExpense) async {
-      },
     );
   }
 

@@ -177,18 +177,14 @@ class CalendarViewModel extends ChangeNotifier {
       if (result.success && result.updatedExpense != null) {
         final updatedExpense = result.updatedExpense!;
 
-        // Step 2: Completely clear all in-memory data
         _eventsByDay.clear();
         _selectedDayExpenses.clear();
 
-        // Step 3: Force complete reload of all data
         await loadMonthData();
         await loadSelectedDayData();
 
-        // Step 4: Execute callback
         onSuccess(updatedExpense);
 
-        // Step 5: Explicit UI refresh
         notifyListeners();
 
         return true;

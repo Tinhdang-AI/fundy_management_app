@@ -276,6 +276,8 @@ class ReportViewModel extends ChangeNotifier {
           }
         }
 
+
+
         // Recalculate totals and category totals
         _calculateTotals();
         _generateCategoryTotals();

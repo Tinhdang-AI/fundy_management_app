@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 class CustomDatePicker extends StatelessWidget {
   final DateTime selectedDate;
-  final Function(DateTime) onDateChanged;
+  final ValueChanged<DateTime> onDateChanged;
   final bool showMonthInfo;
   final Color? backgroundColor;
   final Color? textColor;
@@ -19,7 +19,8 @@ class CustomDatePicker extends StatelessWidget {
   /// [textColor]: Màu chữ (mặc định: Colors.black)
   /// [arrowColor]: Màu của các mũi tên điều hướng (mặc định: Colors.orange)
   /// [showBorder]: Hiển thị viền (mặc định: true)
-  CustomDatePicker({
+  const CustomDatePicker({
+    Key? key,
     required this.selectedDate,
     required this.onDateChanged,
     this.showMonthInfo = false,
@@ -27,16 +28,13 @@ class CustomDatePicker extends StatelessWidget {
     this.textColor,
     this.arrowColor = Colors.orange,
     this.showBorder = true,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Tính toán thông tin phạm vi tháng để hiển thị
-    DateTime firstDay = DateTime(selectedDate.year, selectedDate.month, 1);
-    DateTime lastDay = DateTime(selectedDate.year, selectedDate.month + 1, 0);
-    String monthRange = "${DateFormat('MM/yyyy').format(selectedDate)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
+    final monthRange = _getMonthRangeText(selectedDate);
 
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
@@ -47,21 +45,16 @@ class CustomDatePicker extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.chevron_left, color: arrowColor),
-            onPressed: () {
-              onDateChanged(selectedDate.subtract(Duration(days: 1)));
-            },
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
-            iconSize: 20,
+          const SizedBox(width: 8),
+          _buildNavigationButton(
+            icon: Icons.chevron_left,
+            onPressed: () => onDateChanged(selectedDate.subtract(const Duration(days: 1))),
           ),
           Expanded(
             child: GestureDetector(
               onTap: () => _selectDate(context),
               child: Container(
-                padding: EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: backgroundColor ?? Colors.white,
                   borderRadius: BorderRadius.circular(4),
@@ -69,17 +62,15 @@ class CustomDatePicker extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Center(
-                      child: Text(
-                        DateFormat('dd/MM/yyyy (E)').format(selectedDate),
-                        style: TextStyle(
-                          color: textColor ?? Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Text(
+                      DateFormat('dd/MM/yyyy').format(selectedDate),
+                      style: TextStyle(
+                        color: textColor ?? Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (showMonthInfo) SizedBox(height: 2),
-                    if (showMonthInfo)
+                    if (showMonthInfo) ...[
+                      const SizedBox(height: 2),
                       Text(
                         monthRange,
                         style: TextStyle(
@@ -87,26 +78,40 @@ class CustomDatePicker extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
             ),
           ),
-          IconButton(
-            icon: Icon(Icons.chevron_right, color: arrowColor),
-            onPressed: () {
-              onDateChanged(selectedDate.add(Duration(days: 1)));
-            },
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
-            iconSize: 20,
+          _buildNavigationButton(
+            icon: Icons.chevron_right,
+            onPressed: () => onDateChanged(selectedDate.add(const Duration(days: 1))),
           ),
         ],
       ),
     );
   }
 
-  // Hiển thị date picker để chọn ngày
+  Widget _buildNavigationButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      icon: Icon(icon, color: arrowColor),
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      iconSize: 20,
+    );
+  }
+
+  String _getMonthRangeText(DateTime date) {
+    final firstDay = DateTime(date.year, date.month, 1);
+    final lastDay = DateTime(date.year, date.month + 1, 0);
+    return "${DateFormat('MM/yyyy').format(date)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -134,36 +139,27 @@ class CustomDatePicker extends StatelessWidget {
   }
 }
 
-// Widget chọn tháng để sử dụng trong CalendarScreen
 class MonthPicker extends StatelessWidget {
   final DateTime selectedDate;
   final DateTime focusedDate;
-  final Function(DateTime) onDateChanged;
-  final Function(int) onMonthChanged;
+  final ValueChanged<DateTime> onDateChanged;
+  final ValueChanged<int> onMonthChanged;
 
-  MonthPicker({
+  const MonthPicker({
+    Key? key,
     required this.selectedDate,
     required this.focusedDate,
     required this.onDateChanged,
     required this.onMonthChanged,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    DateTime firstDay = DateTime(focusedDate.year, focusedDate.month, 1);
-    DateTime lastDay = DateTime(focusedDate.year, focusedDate.month + 1, 0);
-    String monthRange = "${DateFormat('MM/yyyy').format(focusedDate)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
+    final monthRange = _getMonthRangeText(focusedDate);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Color(0xFFFFA07A),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
-        ),
+        color: const Color(0xFFFFA07A),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -171,45 +167,36 @@ class MonthPicker extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.arrow_back_ios, color: Colors.white),
             onPressed: () => onMonthChanged(-1),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
           ),
           Expanded(
             child: GestureDetector(
               onTap: () => _selectDate(context),
-              child: Column(
-                children: [
-                  Text(
-                    DateFormat('dd/MM/yyyy (E)').format(selectedDate),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    monthRange,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+              child: Text(
+                monthRange,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, color: Colors.white),
             onPressed: () => onMonthChanged(1),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
           ),
         ],
       ),
     );
   }
 
-  // Hiển thị date picker để chọn ngày
+  String _getMonthRangeText(DateTime date) {
+    final firstDay = DateTime(date.year, date.month, 1);
+    final lastDay = DateTime(date.year, date.month + 1, 0);
+    return "${DateFormat('MM/yyyy').format(date)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -219,10 +206,10 @@ class MonthPicker extends StatelessWidget {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.orange, // Header background color
-              onPrimary: Colors.white, // Header text color
-              onSurface: Colors.black, // Calendar text color
+            colorScheme: const ColorScheme.light(
+              primary: Colors.orange,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
             dialogBackgroundColor: Colors.white,
           ),
@@ -236,4 +223,3 @@ class MonthPicker extends StatelessWidget {
     }
   }
 }
-

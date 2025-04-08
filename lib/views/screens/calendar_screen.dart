@@ -8,7 +8,7 @@ import '../../utils/message_utils.dart';
 import '../../utils/transaction_utils.dart';
 import '../widgets/app_bottom_navigation_bar.dart';
 import '../widgets/grouped_transaction_list.dart';
-import '../widgets/transaction_action_menu.dart';
+import '../../utils/transaction_helper.dart';
 import '../widgets/custom_date_picker.dart'; // Import widget chọn lịch chung
 
 class CalendarScreen extends StatefulWidget {
@@ -287,35 +287,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryItem('Tiền thu', formatCurrencyWithSymbol(viewModel.incomeTotal), Colors.green),
-          _buildSummaryItem('Tiền chi', formatCurrencyWithSymbol(viewModel.expenseTotal), Colors.red),
+          _buildSummaryItem('Tiền thu', formatCurrencyWithSymbol(viewModel.incomeTotal), Colors.green, Icons.arrow_upward),
+          _buildSummaryItem('Tiền chi', formatCurrencyWithSymbol(viewModel.expenseTotal), Colors.red, Icons.arrow_downward),
           _buildSummaryItem(
               'Tổng',
               viewModel.netTotal >= 0
                   ? formatCurrencyWithSymbol(viewModel.netTotal)
                   : '-${formatCurrencyWithSymbol(viewModel.netTotal.abs())}',
-              viewModel.netTotal >= 0 ? Colors.green : Colors.red
+              viewModel.netTotal >= 0 ? Colors.green : Colors.red,
+           Icons.account_balance_wallet,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, String amount, Color color) {
+  Widget _buildSummaryItem(String label, String amount, Color color, IconData icon) {
     return Column(
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.black87),
-          overflow: TextOverflow.ellipsis,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 13, color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
         SizedBox(height: 2),
         ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 110),
+          constraints: BoxConstraints(maxWidth: 130),
           child: Text(
             amount,
             style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: color
             ),
@@ -331,21 +338,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return GroupedTransactionList(
       transactions: viewModel.selectedDayExpenses,
       onLongPress: (context, expense) =>
-          _showActionMenu(context, expense, viewModel),
-    );
-  }
-
-
-  void _showActionMenu(BuildContext context, ExpenseModel expense, CalendarViewModel viewModel) {
-    TransactionActionMenu.show(
-      context: context,
-      expense: expense,
-      viewModel: viewModel,
-      onEditSuccess: (updatedExpense) async {
-      },
-      onDeleteSuccess: (deletedExpense) async {
-      },
-    );
+          TransactionHelper.showActionMenu(
+              context,
+              expense,
+              viewModel,
+              null, // No special callback needed after edit
+              null
+          )
+      );
   }
 
   // Check if two dates are the same day

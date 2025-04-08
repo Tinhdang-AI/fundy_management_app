@@ -135,12 +135,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   Widget _buildToggleTab() {
     return Container(
-      height: 36,
+      height: 42,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildTabButton("Tiền chi", 0),
-          SizedBox(width: 8),
           _buildTabButton("Tiền thu", 1),
         ],
       ),
@@ -151,7 +154,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     bool isSelected = selectedTab == index;
 
     return Expanded(
-      child: GestureDetector(
+      child: InkWell(
         onTap: () {
           setState(() {
             selectedTab = index;
@@ -159,19 +162,33 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             selectedCategoryIcon = "";
           });
         },
-        child: Container(
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
           alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(vertical: 8),
+          margin: EdgeInsets.all(4),
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected ? Color(0xFFFF8B55) : Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(5),
+            color: isSelected ? Color(0xFFFF8B55) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+              BoxShadow(
+                color: Color(0xFFFF8B55).withOpacity(0.3),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              )
+            ]
+                : null,
           ),
+
           child: Text(
             text,
             style: TextStyle(
               fontSize: 16,
-              color: isSelected ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.black87,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             ),
           ),
         ),
@@ -263,16 +280,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   Widget _buildCategoryGrid(ExpenseViewModel viewModel) {
-    List<Map<String, dynamic>> categories = selectedTab == 0
-        ? viewModel.expenseCategories
-        : viewModel.incomeCategories;
+    List<Map<String, dynamic>> categories =
+    selectedTab == 0 ? viewModel.expenseCategories : viewModel.incomeCategories;
 
     return GridView.builder(
+      padding: EdgeInsets.only(bottom: 16, top: 4),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 1,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
@@ -286,38 +303,81 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             } else {
               setState(() {
                 selectedCategory = categories[index]["label"];
-                selectedCategoryIcon =
-                    (categories[index]["icon"] as IconData).codePoint
-                        .toString();
+                selectedCategoryIcon = (categories[index]["icon"] as IconData).codePoint.toString();
               });
             }
           },
-          child: Container(
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 250),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(
-                color: isSelected ? Colors.orange : Colors.grey.shade300,
+                color: isSelected
+                    ? Color(0xFFFF8B55)
+                    : isEditButton
+                    ? Colors.grey[300]!
+                    : Colors.grey[200]!,
                 width: isSelected ? 2 : 1,
               ),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isSelected
+                  ? [
+                BoxShadow(
+                  color: Color(0xFFFF8B55).withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                )
+              ]
+                  : [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                )
+              ],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  categories[index]["icon"],
-                  size: 40,
-                  color: isSelected || isEditButton ? Colors.orange : Colors
-                      .grey,
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Color(0xFFFF8B55).withOpacity(0.1)
+                        : isEditButton
+                        ? Colors.grey[100]
+                        : Colors.grey[50],
+                    shape: BoxShape.circle,
+                    boxShadow: isSelected
+                        ? [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                        offset: Offset(0, 2),
+                      )
+                    ]
+                        : null,
+                  ),
+                  child: Icon(
+                    categories[index]["icon"],
+                    size: 30,
+                    color: isSelected || isEditButton ? Color(0xFFFF8B55) : Colors.grey[600],
+                  ),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  categories[index]["label"],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isSelected || isEditButton ? Colors.orange : Colors
-                        .black,
+                SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    categories[index]["label"],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.2,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected || isEditButton ? Color(0xFFFF8B55) : Colors.black87,
+                    ),
                   ),
                 ),
               ],
@@ -516,10 +576,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       child: ElevatedButton(
         onPressed: viewModel.isLoading ? null : () => _saveExpense(viewModel),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFFFF8B55),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
-          padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
         ),
         child: viewModel.isLoading
             ? SizedBox(
@@ -532,7 +592,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         )
             : Text(
           "Nhập khoản tiền ${selectedTab == 0 ? 'chi' : 'thu'}",
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );

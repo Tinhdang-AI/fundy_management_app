@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../utils/transaction_helper.dart';
 import '../../viewmodels/search_viewmodel.dart';
 import '../../models/expense_model.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/message_utils.dart';
 import '../../utils/transaction_utils.dart';
 import '../widgets/grouped_transaction_list.dart';
-import '../widgets/transaction_action_menu.dart';
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -309,21 +309,15 @@ class _SearchScreenState extends State<SearchScreen> {
       child: GroupedTransactionList(
         transactions: filteredResults,
         onLongPress: (context, expense) {
-          _showActionMenu(context, expense, viewModel);
-        },
+          TransactionHelper.showActionMenu(
+              context,
+              expense,
+              viewModel,
+              null, // No special callback needed after edit
+              null
+          );
+          },
       ),
-    );
-  }
-
-  void _showActionMenu(BuildContext context, ExpenseModel expense, SearchViewModel viewModel) {
-    TransactionActionMenu.show(
-      context: context,
-      expense: expense,
-      viewModel: viewModel,
-      onEditSuccess: (updatedExpense) async {
-      },
-      onDeleteSuccess: (deletedExpense) async {
-      },
     );
   }
 
