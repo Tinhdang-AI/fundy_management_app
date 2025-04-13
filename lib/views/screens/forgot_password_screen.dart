@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/message_utils.dart';
+import '/localization/app_localizations_extension.dart'; // Import localization extension
 
 class ForgotPasswordScreen extends StatefulWidget {
   @override
@@ -29,7 +30,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     // Client-side validation
     if (email.isEmpty) {
-      MessageUtils.showErrorMessage(context, "Vui lòng nhập email!");
+      MessageUtils.showErrorMessage(context, context.tr('required_field', ['email']));
       setState(() {
         _isLoading = false;
       });
@@ -37,7 +38,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     if (!EmailValidator.validate(email)) {
-      MessageUtils.showErrorMessage(context, "Email không hợp lệ! Vui lòng nhập đúng định dạng.");
+      MessageUtils.showErrorMessage(context, context.tr('invalid_email'));
       setState(() {
         _isLoading = false;
       });
@@ -53,13 +54,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (success) {
         // Show success message and navigate
-        _showSuccessAndNavigate("Email đặt lại mật khẩu đã được gửi!\n\nVui lòng kiểm tra hộp thư của bạn và làm theo hướng dẫn để đặt lại mật khẩu.");
+        _showSuccessAndNavigate(context.tr('reset_password_message'));
       } else if (authViewModel.errorMessage != null) {
         // Display error from view model
         MessageUtils.showErrorMessage(context, authViewModel.errorMessage!);
       }
     } catch (e) {
-      MessageUtils.showErrorMessage(context, "Lỗi: ${e.toString()}");
+      MessageUtils.showErrorMessage(context, "${context.tr('error')}: ${e.toString()}");
     } finally {
       if (mounted) {
         setState(() {
@@ -72,7 +73,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void _showSuccessAndNavigate(String message) {
     MessageUtils.showAlertDialog(
         context: context,
-        title: "Thành công!",
+        title: context.tr('success'),
         message: message,
         okLabel: "OK",
         onOk: () {
@@ -137,7 +138,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   SizedBox(height: 10),
 
                   Text(
-                    "Quên Mật Khẩu?",
+                    context.tr('reset_password_title'),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -148,7 +149,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   SizedBox(height: 10),
 
                   Text(
-                    "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+                    context.tr('reset_password_prompt'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -165,7 +166,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     keyboardType: TextInputType.emailAddress,
                     style: TextStyle(fontSize: 16),
                     decoration: InputDecoration(
-                      hintText: "Email",
+                      hintText: context.tr('email'),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
@@ -213,7 +214,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                       )
                           : Text(
-                        "Gửi Email",
+                        context.tr('send_email'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -227,14 +228,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   // Back to login link
                   Text.rich(
                     TextSpan(
-                      text: "Quay lại ",
+                      text: context.tr('back_to_login'),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white,
                       ),
                       children: [
                         TextSpan(
-                          text: "Đăng nhập",
+                          text: context.tr('login'),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

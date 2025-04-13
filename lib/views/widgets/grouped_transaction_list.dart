@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Import thêm thư viện hỗ trợ ngôn ngữ
+import 'package:intl/date_symbol_data_local.dart';
 import '../../models/expense_model.dart';
 import '../../utils/currency_formatter.dart';
+import '/localization/app_localizations_extension.dart';
 
 class GroupedTransactionList extends StatelessWidget {
   final List<ExpenseModel> transactions;
@@ -18,14 +19,14 @@ class GroupedTransactionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Đảm bảo đã khởi tạo locale tiếng Việt
-    initializeDateFormatting('vi_VN', null);
+    // Initialize date formatting for multiple locales
+    initializeDateFormatting();
 
     // Group transactions by date
     Map<String, List<ExpenseModel>> groupedTransactions = {};
     for (var transaction in transactions) {
-      // Sử dụng locale 'vi_VN' để hiển thị ngày tiếng Việt
-      String date = _formatDateToVietnamese(transaction.date);
+      // Format date based on the current locale
+      String date = _formatDateWithLocale(context, transaction.date);
       if (!groupedTransactions.containsKey(date)) {
         groupedTransactions[date] = [];
       }
@@ -137,37 +138,53 @@ class GroupedTransactionList extends StatelessWidget {
     );
   }
 
-  // Hàm chuyển đổi định dạng ngày tháng sang tiếng Việt
-  String _formatDateToVietnamese(DateTime date) {
-    // Pattern trực tiếp với thứ tiếng Việt
-    final formatter = DateFormat('d/M/yyyy', 'vi_VN');
+  // Format date based on the current locale
+  String _formatDateWithLocale(BuildContext context, DateTime date) {
+    // Get the current locale code from the context
+    final locale = Localizations.localeOf(context).languageCode;
 
-    // Lấy tên thứ trong tuần
-    String weekday = _getVietnameseWeekday(date.weekday);
+    // Format the date part (day/month/year)
+    final dateFormatter = DateFormat('d/M/yyyy', locale);
+    String formattedDate = dateFormatter.format(date);
 
-    // Kết hợp ngày tháng với tên thứ
-    return '${formatter.format(date)} ($weekday)';
+    // Get localized weekday name
+    String weekdayName = _getLocalizedWeekday(context, date.weekday);
+
+    // Combine date with weekday
+    return '$formattedDate ($weekdayName)';
   }
 
-  // Hàm trả về tên thứ tiếng Việt dựa trên weekday (1-7)
-  String _getVietnameseWeekday(int weekday) {
+  // Get localized weekday name based on weekday number (1-7)
+  String _getLocalizedWeekday(BuildContext context, int weekday) {
+    // Map weekday number to translation key
+    String weekdayKey;
     switch (weekday) {
       case 1:
-        return 'Thứ hai';
+        weekdayKey = 'monday_full';
+        break;
       case 2:
-        return 'Thứ ba';
+        weekdayKey = 'tuesday_full';
+        break;
       case 3:
-        return 'Thứ tư';
+        weekdayKey = 'wednesday_full';
+        break;
       case 4:
-        return 'Thứ năm';
+        weekdayKey = 'thursday_full';
+        break;
       case 5:
-        return 'Thứ sáu';
+        weekdayKey = 'friday_full';
+        break;
       case 6:
-        return 'Thứ bảy';
+        weekdayKey = 'saturday_full';
+        break;
       case 7:
-        return 'Chủ nhật';
+        weekdayKey = 'sunday_full';
+        break;
       default:
         return '';
     }
+
+    // Get translated weekday name
+    return context.tr(weekdayKey);
   }
 }

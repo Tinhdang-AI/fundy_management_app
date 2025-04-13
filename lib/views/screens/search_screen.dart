@@ -8,6 +8,7 @@ import '../../utils/currency_formatter.dart';
 import '../../utils/message_utils.dart';
 import '../../utils/transaction_utils.dart';
 import '../widgets/grouped_transaction_list.dart';
+import '/localization/app_localizations_extension.dart'; // Import localization extension
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -49,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Tìm kiếm',
+          context.tr('search'),
           style: TextStyle(color: Colors.black),
         ),
         actions: [
@@ -57,7 +58,7 @@ class _SearchScreenState extends State<SearchScreen> {
             IconButton(
               icon: Icon(Icons.filter_alt_off, color: Colors.orange),
               onPressed: () => searchViewModel.resetFilters(),
-              tooltip: 'Xóa tất cả bộ lọc',
+              tooltip: context.tr('clear_all_filters'),
             ),
         ],
         centerTitle: true,
@@ -89,7 +90,7 @@ class _SearchScreenState extends State<SearchScreen> {
         controller: _searchController,
         onChanged: (text) => viewModel.setSearchText(text),
         decoration: InputDecoration(
-          hintText: 'Tìm kiếm',
+          hintText: context.tr('search_hint'),
           prefixIcon: Icon(Icons.search, color: Colors.grey),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
@@ -124,7 +125,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ElevatedButton.icon(
                 onPressed: () => _selectDateRange(context, viewModel),
                 icon: Icon(Icons.date_range, size: 18),
-                label: Text('Chọn ngày'),
+                label: Text(context.tr('select_date')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
@@ -140,7 +141,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Expanded(
                     child: Chip(
                       label: Text(
-                        'Từ: ${DateFormat('dd/MM/yyyy').format(viewModel.startDate!)} - Đến: ${DateFormat('dd/MM/yyyy').format(viewModel.endDate!)}',
+                        '${context.tr('from')}${DateFormat('dd/MM/yyyy').format(viewModel.startDate!)} - ${context.tr('to')}${DateFormat('dd/MM/yyyy').format(viewModel.endDate!)}',
                         style: TextStyle(fontSize: 12),
                       ),
                       deleteIcon: Icon(Icons.close, size: 16),
@@ -167,7 +168,7 @@ class _SearchScreenState extends State<SearchScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: viewModel.selectedCategory.isEmpty ? null : viewModel.selectedCategory,
-          hint: Text('Chọn danh mục'),
+          hint: Text(context.tr('select_category')),
           isExpanded: true,
           icon: Icon(Icons.arrow_drop_down),
           iconSize: 24,
@@ -178,7 +179,7 @@ class _SearchScreenState extends State<SearchScreen> {
           items: [
             DropdownMenuItem<String>(
               value: '',
-              child: Text('Tất cả danh mục'),
+              child: Text(context.tr('all_categories')),
             ),
             ...viewModel.availableCategories.map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
@@ -198,10 +199,10 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildSummaryItem('Chi tiêu', formatCurrencyWithSymbol(viewModel.expenseTotal), Colors.red.shade200),
-          _buildSummaryItem('Thu nhập', formatCurrencyWithSymbol(viewModel.incomeTotal), Colors.green.shade200),
+          _buildSummaryItem(context.tr('expense'), formatCurrencyWithSymbol(viewModel.expenseTotal), Colors.red.shade200),
+          _buildSummaryItem(context.tr('income'), formatCurrencyWithSymbol(viewModel.incomeTotal), Colors.green.shade200),
           _buildSummaryItem(
-              'Chênh lệch',
+              context.tr('difference'),
               viewModel.netTotal >= 0
                   ? formatCurrencyWithSymbol(viewModel.netTotal)
                   : '-${formatCurrencyWithSymbol(viewModel.netTotal.abs())}',
@@ -256,7 +257,7 @@ class _SearchScreenState extends State<SearchScreen> {
               color: viewModel.showExpenses ? Colors.orange : Colors.grey.shade200,
               alignment: Alignment.center,
               child: Text(
-                'Tiền chi',
+                context.tr('expense'),
                 style: TextStyle(
                   color: viewModel.showExpenses ? Colors.white : Colors.black,
                   fontWeight: viewModel.showExpenses ? FontWeight.bold : FontWeight.normal,
@@ -273,7 +274,7 @@ class _SearchScreenState extends State<SearchScreen> {
               color: !viewModel.showExpenses ? Colors.orange : Colors.grey.shade200,
               alignment: Alignment.center,
               child: Text(
-                'Tiền thu',
+                context.tr('income'),
                 style: TextStyle(
                   color: !viewModel.showExpenses ? Colors.white : Colors.black,
                   fontWeight: !viewModel.showExpenses ? FontWeight.bold : FontWeight.normal,
@@ -298,7 +299,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (filteredResults.isEmpty) {
       return Center(
         child: Text(
-          'Không có ${viewModel.showExpenses ? 'khoản chi' : 'khoản thu'} nào phù hợp',
+          viewModel.showExpenses ? context.tr('no_expense_match') : context.tr('no_income_match'),
           style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
@@ -316,7 +317,7 @@ class _SearchScreenState extends State<SearchScreen> {
               null, // No special callback needed after edit
               null
           );
-          },
+        },
       ),
     );
   }

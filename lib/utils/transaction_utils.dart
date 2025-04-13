@@ -4,6 +4,7 @@ import '../models/expense_model.dart';
 import '../services/database_service.dart';
 import 'currency_formatter.dart';
 import 'message_utils.dart';
+import '/localization/app_localizations_extension.dart';
 
 class TransactionUtils {
   // Edit a transaction
@@ -22,7 +23,7 @@ class TransactionUtils {
       print("Error updating transaction: $e");
       return TransactionResult(
         success: false,
-        errorMessage: "Lỗi cập nhật giao dịch: ${e.toString()}",
+        errorMessage: "Error updating transaction: ${e.toString()}",
       );
     }
   }
@@ -56,7 +57,7 @@ class TransactionUtils {
             children: <Widget>[
               ListTile(
                 leading: Icon(Icons.edit, color: Colors.orange),
-                title: Text('Chỉnh sửa giao dịch'),
+                title: Text(context.tr('edit_transaction')),
                 onTap: () {
                   Navigator.pop(context);
                   onEdit();
@@ -64,7 +65,7 @@ class TransactionUtils {
               ),
               ListTile(
                 leading: Icon(Icons.delete, color: Colors.red),
-                title: Text('Xóa giao dịch'),
+                title: Text(context.tr('delete_transaction')),
                 onTap: () {
                   Navigator.pop(context);
                   onDelete();
@@ -72,7 +73,7 @@ class TransactionUtils {
               ),
               ListTile(
                 leading: Icon(Icons.close),
-                title: Text('Hủy'),
+                title: Text(context.tr('cancel')),
                 onTap: () => Navigator.pop(context),
               ),
             ],
@@ -97,7 +98,7 @@ class TransactionUtils {
     // Keep original date value
     DateTime selectedDate = expense.date;
 
-    // Khởi tạo danh mục đã chọn và biểu tượng danh mục
+    // Initialize selected category and category icon
     String selectedCategory = expense.category;
     String selectedCategoryIcon = expense.categoryIcon;
 
@@ -111,7 +112,7 @@ class TransactionUtils {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return Theme(
-            // Áp dụng theme riêng cho dialog này
+            // Apply a custom theme for this dialog
             data: Theme.of(context).copyWith(
               textSelectionTheme: TextSelectionThemeData(
                 cursorColor: Colors.orange,
@@ -120,23 +121,23 @@ class TransactionUtils {
               ),
             ),
             child: AlertDialog(
-              title: Text('Chỉnh sửa giao dịch'),
+              title: Text(context.tr('edit_transaction')),
               backgroundColor: Colors.white,
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Phần danh mục có thể chọn
+                    // Category selection section
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Danh mục:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('${context.tr('category')}:', style: TextStyle(fontWeight: FontWeight.bold)),
                         SizedBox(height: 8),
-                        // Container có thể nhấn để mở dialog chọn danh mục
+                        // Tappable container to open category selection dialog
                         GestureDetector(
                           onTap: () {
-                            // Hiển thị dialog chọn danh mục
+                            // Show category selection dialog
                             _showCategorySelectionDialog(
                                 context,
                                 categoryList,
@@ -160,7 +161,7 @@ class TransactionUtils {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // Phần hiển thị danh mục đã chọn
+                                // Display selected category
                                 Row(
                                   children: [
                                     Icon(
@@ -173,7 +174,7 @@ class TransactionUtils {
                                     ),
                                   ],
                                 ),
-                                // Thêm icon để cho biết có thể nhấn vào
+                                // Add icon to indicate it's tappable
                                 Icon(Icons.arrow_drop_down, color: Colors.black),
                               ],
                             ),
@@ -189,7 +190,7 @@ class TransactionUtils {
                       controller: noteController,
                       style: TextStyle(color: Colors.black),
                       decoration: InputDecoration(
-                        labelText: 'Ghi chú',
+                        labelText: context.tr('note'),
                       ),
                     ),
 
@@ -201,7 +202,7 @@ class TransactionUtils {
                       style: TextStyle(color: Colors.black),
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'Số tiền',
+                        labelText: context.tr('amount'),
                         suffix: Text(getCurrentSymbol(), style: TextStyle(color: Colors.black)),
                       ),
                       inputFormatters: [
@@ -244,7 +245,7 @@ class TransactionUtils {
                           controller: dateController,
                           style: TextStyle(color: Colors.black),
                           decoration: InputDecoration(
-                            labelText: 'Ngày',
+                            labelText: context.tr('date'),
                             suffixIcon: Icon(Icons.calendar_today, color: Colors.black),
                           ),
                         ),
@@ -256,7 +257,7 @@ class TransactionUtils {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, null),
-                  child: Text('Hủy'),
+                  child: Text(context.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -266,7 +267,7 @@ class TransactionUtils {
 
                     if (amount <= 0) {
                       // Show error
-                      MessageUtils.showErrorMessage(context, "Số tiền không hợp lệ");
+                      MessageUtils.showErrorMessage(context, context.tr('invalid_amount'));
                       return;
                     }
 
@@ -305,7 +306,7 @@ class TransactionUtils {
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                  child: Text('Lưu'),
+                  child: Text(context.tr('save')),
                 ),
               ],
             ),
@@ -322,23 +323,25 @@ class TransactionUtils {
       String currentCategory,
       Function(String, String) onCategorySelected) {
 
-    // Lọc danh sách danh mục theo loại (thu/chi) VÀ loại bỏ mục "Chỉnh sửa"
+    // Filter categories by type (expense/income) AND remove "Edit" category
     final filteredCategories = categoryList.where((category) =>
     category['isExpense'] == isExpense &&
-        category['name'] != "Chỉnh sửa" // Loại bỏ mục "Chỉnh sửa"
+        category['name'] != context.tr('category_edit')  // Remove "Edit" category
     ).toList();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(isExpense ? 'Chọn danh mục chi' : 'Chọn danh mục thu'),
+          title: Text(isExpense
+              ? context.tr('select_category') + ' ' + context.tr('expense').toLowerCase()
+              : context.tr('select_category') + ' ' + context.tr('income').toLowerCase()),
           backgroundColor: Colors.white,
           content: Container(
             width: double.maxFinite,
             height: 300,
             child: filteredCategories.isEmpty
-                ? Center(child: Text('Không có danh mục nào.'))
+                ? Center(child: Text(context.tr('no_data')))
                 : ListView.builder(
               shrinkWrap: true,
               itemCount: filteredCategories.length,
@@ -366,7 +369,7 @@ class TransactionUtils {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Hủy'),
+              child: Text(context.tr('cancel')),
             ),
           ],
         );
@@ -378,23 +381,28 @@ class TransactionUtils {
   static Future<bool?> showDeleteConfirmation(
       BuildContext context,
       ExpenseModel expense) {
+    String type = expense.isExpense ? context.tr('expense').toLowerCase() : context.tr('income').toLowerCase();
+    String formattedAmount = formatCurrencyWithSymbol(expense.amount);
+
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Xác nhận xóa'),
+        title: Text(context.tr('confirm')),
         backgroundColor: Colors.white,
         content: Text(
-            'Bạn có chắc chắn muốn xóa khoản ${expense.isExpense ? "chi" : "thu"} "${expense.note}" với số tiền ${formatCurrencyWithSymbol(expense.amount)} không?'
+            context.tr('confirm_delete_transaction') + ' ' +
+                type + ' "${expense.note}" ' +
+                context.tr('with_amount') + ' ' + formattedAmount + '?'
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
+            child: Text(context.tr('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Xóa', style: TextStyle(color: Colors.white)),
+            child: Text(context.tr('delete'), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -424,8 +432,8 @@ class EditResult {
   final String note;
   final double amount;
   final DateTime date;
-  final String category;       // Thêm trường category
-  final String categoryIcon;   // Thêm trường categoryIcon
+  final String category;
+  final String categoryIcon;
   final bool updated;
 
   EditResult({

@@ -48,7 +48,7 @@ class ReportViewModel extends ChangeNotifier {
     Colors.lime.shade400,
   ];
 
-  // Getters
+  // Getters (remain the same as in the previous implementation)
   bool get isLoading => _isLoading;
   bool get isMonthly => _isMonthly;
   bool get hasNoData => _hasNoData;
@@ -91,6 +91,14 @@ class ReportViewModel extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  // Update selected date
+  void updateSelectedDate(DateTime newDate) {
+    _selectedDate = newDate;
+    _showingCategoryDetails = false;
+    notifyListeners();
+    loadReportData();
   }
 
   // Load report data based on selected time period
@@ -157,6 +165,36 @@ class ReportViewModel extends ChangeNotifier {
     }
   }
 
+  // Update time range
+  Future<void> updateTimeRange(bool isNext) async {
+    if (_isMonthly) {
+      // Monthly view
+      _selectedDate = DateTime(
+        _selectedDate.year,
+        isNext ? _selectedDate.month + 1 : _selectedDate.month - 1,
+      );
+    } else {
+      // Yearly view
+      _selectedDate = DateTime(
+        isNext ? _selectedDate.year + 1 : _selectedDate.year - 1,
+        _selectedDate.month,
+      );
+    }
+
+    _showingCategoryDetails = false;
+    notifyListeners();
+    await loadReportData();
+  }
+
+  // Toggle between monthly and yearly view
+  void toggleTimeFrame() {
+    _isMonthly = !_isMonthly;
+    _showingCategoryDetails = false;
+    _selectedDate = DateTime.now(); // Reset to current date
+    notifyListeners();
+    loadReportData();
+  }
+
   // Calculate totals
   void _calculateTotals() {
     _expenseTotal = _expenses.fold(0, (sum, item) => sum + item.amount);
@@ -204,35 +242,6 @@ class ReportViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle between monthly and yearly view
-  void toggleTimeFrame() {
-    _isMonthly = !_isMonthly;
-    _showingCategoryDetails = false;
-    notifyListeners();
-    loadReportData();
-  }
-
-  // Update time range
-  Future<void> updateTimeRange(bool isNext) async {
-    if (_isMonthly) {
-      // Monthly view
-      _selectedDate = DateTime(
-        _selectedDate.year,
-        isNext ? _selectedDate.month + 1 : _selectedDate.month - 1,
-      );
-    } else {
-      // Yearly view
-      _selectedDate = DateTime(
-        isNext ? _selectedDate.year + 1 : _selectedDate.year - 1,
-        _selectedDate.month,
-      );
-    }
-
-    _showingCategoryDetails = false;
-    notifyListeners();
-    await loadReportData();
-  }
-
   // Set tab index
   void setTabIndex(int index) {
     _tabIndex = index;
@@ -275,8 +284,6 @@ class ReportViewModel extends ChangeNotifier {
             _incomes[index] = updatedExpense;
           }
         }
-
-
 
         // Recalculate totals and category totals
         _calculateTotals();

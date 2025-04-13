@@ -1,5 +1,7 @@
+import '/localization/app_localizations_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/language_selector.dart';
 import '/viewmodels/more_viewmodel.dart';
 import '/viewmodels/auth_viewmodel.dart';
 import '/views/widgets/app_bottom_navigation_bar.dart';
@@ -34,7 +36,7 @@ class _MoreScreenState extends State<MoreScreen> {
       backgroundColor: Colors.orange.shade50,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('Khác', style: TextStyle(color: Colors.black)),
+        title: Text(context.tr('more'), style: TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -124,7 +126,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 if (viewModel.userJoinDate.isNotEmpty) SizedBox(height: 5),
                 if (viewModel.userJoinDate.isNotEmpty)
                   Text(
-                    "Đã tham gia từ: ${viewModel.userJoinDate}",
+                    context.tr('joined_date', [viewModel.userJoinDate]),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,
@@ -151,18 +153,18 @@ class _MoreScreenState extends State<MoreScreen> {
       context: context,
       builder: (context) =>
           AlertDialog(
-            title: Text("Gửi phản hồi"),
+            title: Text(context.tr('send_feedback')),
             backgroundColor: Colors.white,
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Phản hồi của bạn giúp chúng tôi cải thiện ứng dụng"),
+                Text(context.tr('feedback_description')),
                 SizedBox(height: 10),
                 TextField(
                   controller: controller,
                   maxLines: 4,
                   decoration: InputDecoration(
-                    hintText: "Nhập phản hồi của bạn",
+                    hintText: context.tr('enter_feedback'),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -171,7 +173,7 @@ class _MoreScreenState extends State<MoreScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("Hủy"),
+                child: Text(context.tr('cancel')),
               ),
               TextButton(
                 onPressed: () async {
@@ -184,11 +186,13 @@ class _MoreScreenState extends State<MoreScreen> {
 
                     if (success) {
                       MessageUtils.showSuccessMessage(
-                          context, "Đã gửi phản hồi thành công");
+                          context,
+                          context.tr('feedback_success')
+                      );
                     }
                   }
                 },
-                child: Text("Gửi"),
+                child: Text(context.tr('send')),
               ),
             ],
           ),
@@ -201,7 +205,7 @@ class _MoreScreenState extends State<MoreScreen> {
       context: context,
       builder: (context) =>
           AlertDialog(
-            title: Text("Về ứng dụng"),
+            title: Text(context.tr('about_app')),
             backgroundColor: Colors.white,
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -225,28 +229,31 @@ class _MoreScreenState extends State<MoreScreen> {
                   ],
                 ),
                 SizedBox(height: 15),
-                Text("Fundy - Quản lý tài chính cá nhân",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
-                Text("Phiên bản: ${viewModel.appVersion}"),
-                SizedBox(height: 10),
                 Text(
-                    "Ứng dụng giúp bạn quản lý thu chi hàng ngày một cách dễ dàng và hiệu quả."),
+                    context.tr('app_description'),
+                    style: TextStyle(fontWeight: FontWeight.bold)
+                ),
+                SizedBox(height: 10),
+                Text(context.tr('version', [viewModel.appVersion])),
+                SizedBox(height: 10),
+                Text(context.tr('app_intro')),
                 SizedBox(height: 15),
-                Text("Tính năng:",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                    context.tr('features'),
+                    style: TextStyle(fontWeight: FontWeight.bold)
+                ),
                 SizedBox(height: 5),
-                Text("• Theo dõi thu chi hàng ngày"),
-                Text("• Xem báo cáo tổng quan, biểu đồ"),
-                Text("• Lịch chi tiêu"),
-                Text("• Tìm kiếm giao dịch"),
-                Text("• Quản lý danh mục"),
+                Text(context.tr('feature_1')),
+                Text(context.tr('feature_2')),
+                Text(context.tr('feature_3')),
+                Text(context.tr('feature_4')),
+                Text(context.tr('feature_5')),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("Đóng"),
+                child: Text(context.tr('close')),
               ),
             ],
           ),
@@ -272,7 +279,7 @@ class _MoreScreenState extends State<MoreScreen> {
             bool obscureText3 = true;
 
             return AlertDialog(
-              title: Text("Đổi mật khẩu"),
+              title: Text(context.tr('change_password')),
               backgroundColor: Colors.white,
               content: SingleChildScrollView(
                 child: Column(
@@ -286,8 +293,10 @@ class _MoreScreenState extends State<MoreScreen> {
                             children: [
                               CircularProgressIndicator(color: Colors.orange),
                               SizedBox(height: 16),
-                              Text("Đang xử lý...",
-                                  style: TextStyle(color: Colors.grey)),
+                              Text(
+                                  context.tr('processing'),
+                                  style: TextStyle(color: Colors.grey)
+                              ),
                             ],
                           ),
                         ),
@@ -300,7 +309,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             controller: currentPasswordController,
                             obscureText: obscureText1,
                             decoration: InputDecoration(
-                              labelText: "Mật khẩu hiện tại",
+                              labelText: context.tr('current_password'),
                               border: OutlineInputBorder(),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -317,7 +326,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             controller: newPasswordController,
                             obscureText: obscureText2,
                             decoration: InputDecoration(
-                              labelText: "Mật khẩu mới",
+                              labelText: context.tr('new_password'),
                               border: OutlineInputBorder(),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -334,7 +343,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             controller: confirmPasswordController,
                             obscureText: obscureText3,
                             decoration: InputDecoration(
-                              labelText: "Xác nhận mật khẩu",
+                              labelText: context.tr('confirm_password'),
                               border: OutlineInputBorder(),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -354,46 +363,58 @@ class _MoreScreenState extends State<MoreScreen> {
               actions: isChangingPassword ? [] : [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: Text("Hủy"),
+                  child: Text(context.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     // Validate inputs
                     if (currentPasswordController.text.isEmpty) {
                       MessageUtils.showErrorMessage(
-                          context, "Vui lòng nhập mật khẩu hiện tại");
+                          context,
+                          context.tr('enter_current_password')
+                      );
                       return;
                     }
 
                     if (newPasswordController.text.isEmpty) {
                       MessageUtils.showErrorMessage(
-                          context, "Vui lòng nhập mật khẩu mới");
+                          context,
+                          context.tr('enter_new_password')
+                      );
                       return;
                     }
 
                     if (confirmPasswordController.text.isEmpty) {
                       MessageUtils.showErrorMessage(
-                          context, "Vui lòng xác nhận mật khẩu mới");
+                          context,
+                          context.tr('confirm_new_password')
+                      );
                       return;
                     }
 
                     if (newPasswordController.text !=
                         confirmPasswordController.text) {
                       MessageUtils.showErrorMessage(
-                          context, "Mật khẩu mới không khớp");
+                          context,
+                          context.tr('password_not_match')
+                      );
                       return;
                     }
 
                     if (newPasswordController.text.length < 6) {
                       MessageUtils.showErrorMessage(
-                          context, "Mật khẩu mới phải có ít nhất 6 ký tự");
+                          context,
+                          context.tr('password_min_length')
+                      );
                       return;
                     }
 
                     if (currentPasswordController.text ==
                         newPasswordController.text) {
-                      MessageUtils.showErrorMessage(context,
-                          "Mật khẩu mới không được giống mật khẩu hiện tại");
+                      MessageUtils.showErrorMessage(
+                          context,
+                          context.tr('password_same')
+                      );
                       return;
                     }
 
@@ -411,7 +432,9 @@ class _MoreScreenState extends State<MoreScreen> {
                     if (success) {
                       Navigator.pop(dialogContext);
                       MessageUtils.showSuccessMessage(
-                          context, "Đổi mật khẩu thành công");
+                          context,
+                          context.tr('change_password_success')
+                      );
                     } else {
                       // Error message is already shown by the view model
                       setDialogState(() {
@@ -420,8 +443,9 @@ class _MoreScreenState extends State<MoreScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange),
-                  child: Text("Cập nhật"),
+                      backgroundColor: Colors.orange
+                  ),
+                  child: Text(context.tr('update')),
                 ),
               ],
             );
@@ -436,10 +460,10 @@ class _MoreScreenState extends State<MoreScreen> {
       MoreViewModel viewModel) async {
     final confirmed = await MessageUtils.showConfirmationDialog(
       context: context,
-      title: "Đặt lại ứng dụng?",
-      message: "Thao tác này sẽ xóa tất cả dữ liệu của bạn và không thể khôi phục. Bạn có chắc chắn muốn tiếp tục?",
-      confirmLabel: "Đặt lại",
-      cancelLabel: "Hủy",
+      title: context.tr('reset_app_confirm'),
+      message: context.tr('reset_app_description'),
+      confirmLabel: context.tr('reset'),
+      cancelLabel: context.tr('cancel'),
       confirmColor: Colors.red,
     );
 
@@ -448,7 +472,9 @@ class _MoreScreenState extends State<MoreScreen> {
 
       if (success) {
         MessageUtils.showSuccessMessage(
-            context, "Tất cả dữ liệu đã được xóa thành công");
+            context,
+            context.tr('reset_success')
+        );
       }
     }
   }
@@ -457,10 +483,10 @@ class _MoreScreenState extends State<MoreScreen> {
   Future<void> _logout(BuildContext context, MoreViewModel viewModel) async {
     final confirmed = await MessageUtils.showConfirmationDialog(
       context: context,
-      title: "Đăng xuất",
-      message: "Bạn có chắc chắn muốn đăng xuất không?",
-      confirmLabel: "Đăng xuất",
-      cancelLabel: "Hủy",
+      title: context.tr('logout'),
+      message: context.tr('confirm_logout'),
+      confirmLabel: context.tr('logout'),
+      cancelLabel: context.tr('cancel'),
     );
 
     if (confirmed == true) {
@@ -539,7 +565,7 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget _buildCurrencyDisplay() {
     String code = getCurrentCode();
     String symbol = getCurrentSymbol();
-    String currencyName = _getCurrencyName(code);
+    String currencyName = _getCurrencyName(context,code);
 
     return Padding(
       padding: const EdgeInsets.only(top: 5.0),
@@ -552,7 +578,7 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
           SizedBox(width: 4),
           Text(
-            'Đơn vị tiền tệ: $currencyName ($symbol)',
+            context.tr('currency_unit', [currencyName, symbol]),
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade700,
@@ -563,27 +589,21 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  String _getCurrencyName(String code) {
-    const List<Map<String, String>> currencies = [
-      {'code': 'VND', 'symbol': 'đ', 'name': 'Việt Nam Đồng'},
-      {'code': 'USD', 'symbol': '\$', 'name': 'Đô la Mỹ'},
-      {'code': 'EUR', 'symbol': '€', 'name': 'Euro'},
-      {'code': 'GBP', 'symbol': '£', 'name': 'Bảng Anh'},
-      {'code': 'JPY', 'symbol': '¥', 'name': 'Yên Nhật'},
-      {'code': 'CNY', 'symbol': '¥', 'name': 'Nhân dân tệ'},
-      {'code': 'KRW', 'symbol': '₩', 'name': 'Won Hàn Quốc'},
-      {'code': 'SGD', 'symbol': 'S\$', 'name': 'Đô la Singapore'},
-      {'code': 'THB', 'symbol': '฿', 'name': 'Baht Thái'},
-      {'code': 'MYR', 'symbol': 'RM', 'name': 'Ringgit Malaysia'},
-    ];
+  String _getCurrencyName(BuildContext context, String code) {
+    final Map<String, String> currencyNames = {
+      'VND': context.tr('currency_vnd'),
+      'USD': context.tr('currency_usd'),
+      'EUR': context.tr('currency_eur'),
+      'GBP': context.tr('currency_gbp'),
+      'JPY': context.tr('currency_jpy'),
+      'CNY': context.tr('currency_cny'),
+      'KRW': context.tr('currency_krw'),
+      'SGD': context.tr('currency_sgd'),
+      'THB': context.tr('currency_thb'),
+      'MYR': context.tr('currency_myr'),
+    };
 
-    for (var currency in currencies) {
-      if (currency['code'] == code) {
-        return currency['name']!;
-      }
-    }
-
-    return 'Việt Nam Đồng';
+    return currencyNames[code] ?? context.tr('currency_vnd');
   }
 
   Widget _buildStats(MoreViewModel viewModel) {
@@ -603,17 +623,17 @@ class _MoreScreenState extends State<MoreScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildStatItem(
-            'Giao dịch',
+            context.tr('transactions'),
             '${viewModel.totalTransactions}',
             Icons.receipt_long,
           ),
           _buildStatItem(
-            'Tháng này',
+            context.tr('this_month'),
             '${viewModel.monthTransactions}',
             Icons.date_range,
           ),
           _buildStatItem(
-            'Tổng số dư',
+            context.tr('total_balance'),
             formatCurrencyWithSymbol(viewModel.totalBalance),
             Icons.account_balance_wallet,
             valueColor: viewModel.totalBalance >= 0 ? Colors.green : Colors.red,
@@ -653,23 +673,27 @@ class _MoreScreenState extends State<MoreScreen> {
     return ListView(
       padding: EdgeInsets.all(16),
       children: [
-        _buildExpansionTile("Tài khoản", Icons.person, [
-          _buildSubMenuItem("Đổi mật khẩu", Icons.lock_open, () {
+        _buildExpansionTile(context.tr('account'), Icons.person, [
+          _buildSubMenuItem(context.tr('change_password'), Icons.lock_open, () {
             _showChangePasswordDialog(context, authViewModel);
           }),
           _buildSubMenuItem(
-              "Đăng xuất", Icons.logout, () => _logout(context, moreViewModel)),
+              context.tr('logout'), Icons.logout, () =>
+              _logout(context, moreViewModel)),
         ]),
-        _buildMenuItem("Đơn vị tiền tệ", Icons.currency_exchange, () {
+        _buildMenuItem(context.tr('currency'), Icons.currency_exchange, () {
           _showCurrencySelector(context, moreViewModel);
         }),
-        _buildMenuItem("Đặt lại ứng dụng", Icons.restore, () {
+
+        LanguageSelector(),
+
+        _buildMenuItem(context.tr('reset_app'), Icons.restore, () {
           _confirmResetApp(context, moreViewModel);
         }),
-        _buildMenuItem("Giới thiệu", Icons.info_outline, () {
+        _buildMenuItem(context.tr('about'), Icons.info_outline, () {
           _showAboutDialog(context, moreViewModel);
         }),
-        _buildMenuItem("Phản hồi", Icons.feedback, () {
+        _buildMenuItem(context.tr('feedback'), Icons.feedback, () {
           _showFeedbackDialog(context, moreViewModel);
         }),
       ],
@@ -733,7 +757,7 @@ class _MoreScreenState extends State<MoreScreen> {
       context: context,
       builder: (context) =>
           AlertDialog(
-            title: Text("Cập nhật thông tin"),
+            title: Text(context.tr('update_profile')),
             backgroundColor: Colors.white,
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -766,8 +790,8 @@ class _MoreScreenState extends State<MoreScreen> {
                 SizedBox(height: 20),
                 TextField(
                   decoration: InputDecoration(
-                    labelText: "Tên hiển thị",
-                    hintText: "Nhập tên của bạn",
+                    labelText: context.tr('display_name'),
+                    hintText: context.tr('enter_display_name'),
                   ),
                   onChanged: (value) {
                     newName = value;
@@ -779,7 +803,7 @@ class _MoreScreenState extends State<MoreScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text("Hủy"),
+                child: Text(context.tr('cancel')),
               ),
               TextButton(
                 onPressed: () async {
@@ -792,11 +816,11 @@ class _MoreScreenState extends State<MoreScreen> {
 
                     if (success) {
                       MessageUtils.showSuccessMessage(
-                          context, "Cập nhật thông tin thành công");
+                          context, context.tr('update_success'));
                     }
                   }
                 },
-                child: Text("Cập nhật"),
+                child: Text(context.tr('update')),
               ),
             ],
           ),
@@ -807,16 +831,16 @@ class _MoreScreenState extends State<MoreScreen> {
   void _showCurrencySelector(BuildContext context, MoreViewModel viewModel) {
     // Common currencies
     final List<Map<String, String>> currencies = [
-      {'code': 'VND', 'symbol': 'đ', 'name': 'Việt Nam Đồng'},
-      {'code': 'USD', 'symbol': '\$', 'name': 'Đô la Mỹ'},
-      {'code': 'EUR', 'symbol': '€', 'name': 'Euro'},
-      {'code': 'GBP', 'symbol': '£', 'name': 'Bảng Anh'},
-      {'code': 'JPY', 'symbol': '¥', 'name': 'Yên Nhật'},
-      {'code': 'CNY', 'symbol': '¥', 'name': 'Nhân dân tệ'},
-      {'code': 'KRW', 'symbol': '₩', 'name': 'Won Hàn Quốc'},
-      {'code': 'SGD', 'symbol': 'S\$', 'name': 'Đô la Singapore'},
-      {'code': 'THB', 'symbol': '฿', 'name': 'Baht Thái'},
-      {'code': 'MYR', 'symbol': 'RM', 'name': 'Ringgit Malaysia'},
+      {'code': 'VND', 'symbol': 'đ', 'name': context.tr('currency_vnd')},
+      {'code': 'USD', 'symbol': '\$', 'name': context.tr('currency_usd')},
+      {'code': 'EUR', 'symbol': '€', 'name': context.tr('currency_eur')},
+      {'code': 'GBP', 'symbol': '£', 'name': context.tr('currency_gbp')},
+      {'code': 'JPY', 'symbol': '¥', 'name': context.tr('currency_jpy')},
+      {'code': 'CNY', 'symbol': '¥', 'name': context.tr('currency_cny')},
+      {'code': 'KRW', 'symbol': '₩', 'name': context.tr('currency_krw')},
+      {'code': 'SGD', 'symbol': 'S\$', 'name': context.tr('currency_sgd')},
+      {'code': 'THB', 'symbol': '฿', 'name': context.tr('currency_thb')},
+      {'code': 'MYR', 'symbol': 'RM', 'name': context.tr('currency_myr')},
     ];
 
     // Get current currency code
@@ -828,7 +852,7 @@ class _MoreScreenState extends State<MoreScreen> {
           StatefulBuilder(
             builder: (context, setState) {
               return AlertDialog(
-                title: Text('Chọn đơn vị tiền tệ'),
+                title: Text(context.tr('select_currency')),
                 backgroundColor: Colors.white,
                 content: Container(
                   width: double.maxFinite,
@@ -869,7 +893,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Hủy'),
+                    child: Text(context.tr('cancel')),
                   ),
                   ElevatedButton(
                     onPressed: () async {
@@ -890,14 +914,15 @@ class _MoreScreenState extends State<MoreScreen> {
                       if (success) {
                         MessageUtils.showSuccessMessage(
                             context,
-                            'Đã cập nhật đơn vị tiền tệ thành ${selectedCurrency['name']}'
+                            context.tr(
+                                'currency_updated', [selectedCurrency['name']!])
                         );
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                     ),
-                    child: Text('Lưu'),
+                    child: Text(context.tr('save')),
                   ),
                 ],
               );

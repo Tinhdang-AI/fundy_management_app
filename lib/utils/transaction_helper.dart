@@ -5,6 +5,7 @@ import '../utils/transaction_utils.dart';
 import '../viewmodels/search_viewmodel.dart';
 import '../viewmodels/calendar_viewmodel.dart';
 import '../viewmodels/report_viewmodel.dart';
+import '/localization/app_localizations_extension.dart';
 
 /// Helper class for transaction operations across different screens
 class TransactionHelper {
@@ -55,20 +56,24 @@ class TransactionHelper {
         final success = await _updateTransactionInViewModel(viewModel, updatedExpense);
 
         if (success) {
-          // Đợi một chút để các hiệu ứng hoàn tất và dữ liệu cập nhật
+          // Wait a bit for animations to complete and data to update
           await Future.delayed(Duration(milliseconds: 300));
 
           if (context.mounted) {
-            // Lấy ScaffoldMessenger hiện tại và đảm bảo nó còn hợp lệ
+            // Get the current ScaffoldMessenger and make sure it's valid
             final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-            // Xóa tất cả các SnackBar đang hiển thị
+            // Clear all displayed SnackBars
             scaffoldMessenger.clearSnackBars();
 
-            // Hiển thị thông báo thành công với độ bền cao hơn
+            // Display success message with longer duration
+            String type = updatedExpense.isExpense
+                ? context.tr('expense')
+                : context.tr('income');
+
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Text("Đã cập nhật khoản ${updatedExpense.isExpense ? 'chi' : 'thu'} thành công"),
+                content: Text(context.tr('transaction_updated', [type])),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
@@ -76,16 +81,16 @@ class TransactionHelper {
             );
           }
 
-          // Gọi callback thành công tùy chọn
+          // Call optional success callback
           if (onEditSuccess != null) {
             await onEditSuccess(updatedExpense);
           }
         } else {
-          // Hiển thị thông báo lỗi nếu cập nhật không thành công
+          // Display error message if update fails
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("Không thể cập nhật giao dịch"),
+                content: Text(context.tr('update_error')),
                 backgroundColor: Colors.red,
                 duration: Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
@@ -99,7 +104,7 @@ class TransactionHelper {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Lỗi khi chỉnh sửa giao dịch: ${e.toString()}"),
+            content: Text("${context.tr('error')}: ${e.toString()}"),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
@@ -124,21 +129,25 @@ class TransactionHelper {
         final success = await _deleteTransactionInViewModel(viewModel, expense);
 
         if (success) {
-          // Đợi một chút để các hiệu ứng hoàn tất và dữ liệu cập nhật
+          // Wait a bit for animations to complete and data to update
           await Future.delayed(Duration(milliseconds: 300));
 
-          // Hiển thị thông báo thành công
+          // Display success message
           if (context.mounted) {
-            // Lấy ScaffoldMessenger hiện tại và đảm bảo nó còn hợp lệ
+            // Get current ScaffoldMessenger and ensure it's valid
             final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-            // Xóa tất cả các SnackBar đang hiển thị
+            // Clear all displayed SnackBars
             scaffoldMessenger.clearSnackBars();
 
-            // Hiển thị thông báo thành công với độ bền cao hơn
+            String type = expense.isExpense
+                ? context.tr('expense')
+                : context.tr('income');
+
+            // Display success message with longer duration
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Text("Đã xóa khoản ${expense.isExpense ? 'chi' : 'thu'} thành công"),
+                content: Text(context.tr('transaction_deleted', [type])),
                 backgroundColor: Colors.green,
                 duration: Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
@@ -146,16 +155,16 @@ class TransactionHelper {
             );
           }
 
-          // Gọi callback thành công tùy chọn
+          // Call optional success callback
           if (onDeleteSuccess != null) {
             await onDeleteSuccess(expense);
           }
         } else {
-          // Hiển thị thông báo lỗi nếu xóa không thành công
+          // Display error message if deletion fails
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("Không thể xóa giao dịch"),
+                content: Text(context.tr('delete_error')),
                 backgroundColor: Colors.red,
                 duration: Duration(seconds: 2),
                 behavior: SnackBarBehavior.floating,
@@ -168,7 +177,7 @@ class TransactionHelper {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Lỗi khi xóa giao dịch: ${e.toString()}"),
+              content: Text("${context.tr('error')}: ${e.toString()}"),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,

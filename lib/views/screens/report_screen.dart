@@ -10,6 +10,9 @@ import '../../utils/transaction_utils.dart';
 import '../widgets/app_bottom_navigation_bar.dart';
 import '../widgets/grouped_transaction_list.dart';
 import '../../utils/transaction_helper.dart';
+import '/localization/app_localizations_extension.dart';
+import '../widgets/month_picker.dart';
+import '../widgets/year_picker.dart';
 
 class ReportScreen extends StatefulWidget {
   @override
@@ -53,7 +56,27 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
       appBar: _buildAppBar(reportViewModel),
       body: Column(
         children: [
-          _buildMonthSelector(reportViewModel),
+          reportViewModel.isMonthly
+              ? MonthPicker(
+            selectedDate: reportViewModel.selectedDate,
+            focusedDate: reportViewModel.selectedDate,
+            onDateChanged: (DateTime newDate) {
+              reportViewModel.updateSelectedDate(newDate);
+            },
+            onMonthChanged: (int direction) {
+              reportViewModel.updateTimeRange(direction > 0);
+            },
+          )
+              : CustomYearPicker(
+            selectedDate: reportViewModel.selectedDate,
+            focusedDate: reportViewModel.selectedDate,
+            onDateChanged: (DateTime newDate) {
+              reportViewModel.updateSelectedDate(newDate);
+            },
+            onYearChanged: (int direction) {
+              reportViewModel.updateTimeRange(direction > 0);
+            },
+          ),
           _buildSummaryBox(reportViewModel),
           if (!reportViewModel.hasNoData && !reportViewModel.showingCategoryDetails)
             _buildTabBar(),
@@ -69,7 +92,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         ],
       ),
       bottomNavigationBar: AppBottomNavigationBar(
-        currentIndex: 2, // 1 for CalendarScreen
+        currentIndex: 2, // 2 for ReportScreen
         onTabSelected: (index) {
           switch (index) {
             case 0:
@@ -130,7 +153,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                   ),
                 ),
                 child: Text(
-                  'Hàng Tháng',
+                  context.tr('monthly'),
                   style: TextStyle(
                     color: viewModel.isMonthly ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
@@ -158,7 +181,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                   ),
                 ),
                 child: Text(
-                  'Hàng Năm',
+                  context.tr('yearly'),
                   style: TextStyle(
                     color: !viewModel.isMonthly ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
@@ -233,7 +256,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Chi tiêu: ',
+                        context.tr('expense_total'),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -267,7 +290,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Thu nhập: ',
+                        context.tr('income_total'),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -302,7 +325,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Thu chi: ',
+                  context.tr('balance'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -334,8 +357,8 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     return TabBar(
       controller: _tabController,
       tabs: [
-        Tab(text: "Chi tiêu"),
-        Tab(text: "Thu nhập"),
+        Tab(text: context.tr('expense')),
+        Tab(text: context.tr('income')),
       ],
       labelColor: Colors.orange,
       unselectedLabelColor: Colors.black54,
@@ -361,7 +384,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     if (categoryData.isEmpty) {
       return Center(
         child: Text(
-          'Không có dữ liệu chi tiêu cho ${viewModel.isMonthly ? "tháng" : "năm"} này',
+          context.tr('no_expense_data', [viewModel.isMonthly ? context.tr('month') : context.tr('year')]),
           style: TextStyle(color: Colors.grey),
         ),
       );
@@ -449,7 +472,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     if (categoryData.isEmpty) {
       return Center(
         child: Text(
-          'Không có dữ liệu thu nhập cho ${viewModel.isMonthly ? "tháng" : "năm"} này',
+          context.tr('no_income_data', [viewModel.isMonthly ? context.tr('month') : context.tr('year')]),
           style: TextStyle(color: Colors.grey),
         ),
       );
@@ -582,19 +605,10 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     final totalAmount = viewModel.categoryTransactions.fold(0.0, (sum, tx) => sum + tx.amount);
     final color = viewModel.isCategoryExpense ? Colors.red : Colors.green;
 
-    // Group transactions by date
-    Map<String, List<ExpenseModel>> groupedTransactions = {};
-    for (var transaction in viewModel.categoryTransactions) {
-      String date = DateFormat('d/M/yyyy (EEEE)').format(transaction.date);
-      if (!groupedTransactions.containsKey(date)) {
-        groupedTransactions[date] = [];
-      }
-      groupedTransactions[date]!.add(transaction);
-    }
-
+    // Format time range display
     String timeRangeDisplay = viewModel.isMonthly
-        ? 'Tháng ${viewModel.selectedDate.month}/${viewModel.selectedDate.year}'
-        : 'Năm ${viewModel.selectedDate.year}';
+        ? '${context.tr('month_' + viewModel.selectedDate.month.toString())} ${viewModel.selectedDate.year}'
+        : '${context.tr('year')} ${viewModel.selectedDate.year}';
 
     return Column(
       children: [
@@ -652,7 +666,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
           child: viewModel.categoryTransactions.isEmpty
               ? Center(
             child: Text(
-              'Không có giao dịch nào',
+              context.tr('no_data'),
               style: TextStyle(color: Colors.grey),
             ),
           )
@@ -666,7 +680,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     null,
                     null
                 ),
-            ),
+          ),
         ),
       ],
     );
@@ -684,7 +698,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
           ),
           SizedBox(height: 16),
           Text(
-            'Không có dữ liệu trong khoảng thời gian này',
+            context.tr('no_data_time_range'),
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
@@ -697,7 +711,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               Navigator.pushReplacementNamed(context, '/expense');
             },
             icon: Icon(Icons.add),
-            label: Text('Thêm giao dịch'),
+            label: Text(context.tr('add_transaction')),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,

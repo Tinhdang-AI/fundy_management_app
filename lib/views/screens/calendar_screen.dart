@@ -9,7 +9,9 @@ import '../../utils/transaction_utils.dart';
 import '../widgets/app_bottom_navigation_bar.dart';
 import '../widgets/grouped_transaction_list.dart';
 import '../../utils/transaction_helper.dart';
-import '../widgets/custom_date_picker.dart'; // Import widget chọn lịch chung
+import '../widgets/custom_date_picker.dart';
+import '../widgets/month_picker.dart';
+import '/localization/app_localizations_extension.dart'; // Import localization extension
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -37,7 +39,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('Lịch', style: TextStyle(color: Colors.black)),
+        title: Text(context.tr('calendar'), style: TextStyle(color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -72,7 +74,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 : calendarViewModel.selectedDayExpenses.isEmpty
                 ? Center(
               child: Text(
-                'Không có giao dịch nào vào ngày này',
+                context.tr('no_transactions_today'),
                 style: TextStyle(color: Colors.grey),
               ),
             )
@@ -159,13 +161,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           color: Colors.grey.shade600,
           child: Row(
             children: [
-              _buildWeekdayHeader("T2"),
-              _buildWeekdayHeader("T3"),
-              _buildWeekdayHeader("T4"),
-              _buildWeekdayHeader("T5"),
-              _buildWeekdayHeader("T6"),
-              _buildWeekdayHeader("T7", isWeekend: true),
-              _buildWeekdayHeader("CN", isWeekend: true),
+              _buildWeekdayHeader(context.tr('monday')),
+              _buildWeekdayHeader(context.tr('tuesday')),
+              _buildWeekdayHeader(context.tr('wednesday')),
+              _buildWeekdayHeader(context.tr('thursday')),
+              _buildWeekdayHeader(context.tr('friday')),
+              _buildWeekdayHeader(context.tr('saturday'), isWeekend: true),
+              _buildWeekdayHeader(context.tr('sunday'), isWeekend: true),
             ],
           ),
         ),
@@ -287,15 +289,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryItem('Tiền thu', formatCurrencyWithSymbol(viewModel.incomeTotal), Colors.green, Icons.arrow_upward),
-          _buildSummaryItem('Tiền chi', formatCurrencyWithSymbol(viewModel.expenseTotal), Colors.red, Icons.arrow_downward),
           _buildSummaryItem(
-              'Tổng',
-              viewModel.netTotal >= 0
-                  ? formatCurrencyWithSymbol(viewModel.netTotal)
-                  : '-${formatCurrencyWithSymbol(viewModel.netTotal.abs())}',
-              viewModel.netTotal >= 0 ? Colors.green : Colors.red,
-           Icons.account_balance_wallet,
+              context.tr('income'),
+              formatCurrencyWithSymbol(viewModel.incomeTotal),
+              Colors.green,
+              Icons.arrow_upward
+          ),
+          _buildSummaryItem(
+              context.tr('expense'),
+              formatCurrencyWithSymbol(viewModel.expenseTotal),
+              Colors.red,
+              Icons.arrow_downward
+          ),
+          _buildSummaryItem(
+            context.tr('total'),
+            viewModel.netTotal >= 0
+                ? formatCurrencyWithSymbol(viewModel.netTotal)
+                : '-${formatCurrencyWithSymbol(viewModel.netTotal.abs())}',
+            viewModel.netTotal >= 0 ? Colors.green : Colors.red,
+            Icons.account_balance_wallet,
           ),
         ],
       ),
@@ -336,16 +348,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildTransactionList(CalendarViewModel viewModel) {
     return GroupedTransactionList(
-      transactions: viewModel.selectedDayExpenses,
-      onLongPress: (context, expense) =>
-          TransactionHelper.showActionMenu(
-              context,
-              expense,
-              viewModel,
-              null, // No special callback needed after edit
-              null
-          )
-      );
+        transactions: viewModel.selectedDayExpenses,
+        onLongPress: (context, expense) =>
+            TransactionHelper.showActionMenu(
+                context,
+                expense,
+                viewModel,
+                null, // No special callback needed after edit
+                null
+            )
+    );
   }
 
   // Check if two dates are the same day

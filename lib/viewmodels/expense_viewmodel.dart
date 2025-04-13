@@ -4,11 +4,29 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
 import '../utils/currency_formatter.dart';
+import 'package:flutter/cupertino.dart';
+import '/localization/app_localizations.dart';
+import '/localization/app_localizations_extension.dart';
 
 class ExpenseViewModel extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  BuildContext? _context;
+
+  // Set context for localization
+  void setContext(BuildContext context) {
+    _context = context;
+  }
+
+  // Get localized string
+  String _tr(String key) {
+    if (_context != null) {
+      return _context!.tr(key);
+    }
+    return key;
+  }
 
   bool _isLoading = false;
   bool _isEditMode = false;
@@ -18,42 +36,46 @@ class ExpenseViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> _expenseCategories = [];
   List<Map<String, dynamic>> _incomeCategories = [];
 
-  // Default categories
-  final List<Map<String, dynamic>> _defaultExpenseCategories = [
-    {"icon": Icons.restaurant, "label": "Ăn uống"},
-    {"icon": Icons.shopping_bag, "label": "Chi tiêu hàng ngày"},
-    {"icon": Icons.checkroom, "label": "Quần áo"},
-    {"icon": Icons.spa, "label": "Mỹ phẩm"},
-    {"icon": Icons.wine_bar, "label": "Phí giao lưu"},
-    {"icon": Icons.local_hospital, "label": "Y tế"},
-    {"icon": Icons.school, "label": "Giáo dục"},
-    {"icon": Icons.electrical_services, "label": "Tiền điện"},
-    {"icon": Icons.directions_bus, "label": "Đi lại"},
-    {"icon": Icons.phone, "label": "Phí liên lạc"},
-    {"icon": Icons.home, "label": "Tiền nhà"},
-    {"icon": Icons.water_drop, "label": "Tiền nước"},
-    {"icon": Icons.local_gas_station, "label": "Xăng dầu"},
-    {"icon": Icons.computer, "label": "Công nghệ"},
-    {"icon": Icons.car_repair, "label": "Sửa chữa"},
-    {"icon": Icons.coffee, "label": "Cafe"},
-    {"icon": Icons.pets, "label": "Thú cưng"},
-    {"icon": Icons.cleaning_services, "label": "Dịch vụ"},
-    {"icon": Icons.build, "label": "Chỉnh sửa"},
-  ];
+  // Default categories with localization keys
+  List<Map<String, dynamic>> _getDefaultExpenseCategories() {
+    return [
+      {"icon": Icons.restaurant, "label": _tr('category_food')},
+      {"icon": Icons.shopping_bag, "label": _tr('category_shopping')},
+      {"icon": Icons.checkroom, "label": _tr('category_clothing')},
+      {"icon": Icons.spa, "label": _tr('category_cosmetics')},
+      {"icon": Icons.wine_bar, "label": _tr('category_entertainment')},
+      {"icon": Icons.local_hospital, "label": _tr('category_healthcare')},
+      {"icon": Icons.school, "label": _tr('category_education')},
+      {"icon": Icons.electrical_services, "label": _tr('category_electricity')},
+      {"icon": Icons.directions_bus, "label": _tr('category_transport')},
+      {"icon": Icons.phone, "label": _tr('category_communication')},
+      {"icon": Icons.home, "label": _tr('category_housing')},
+      {"icon": Icons.water_drop, "label": _tr('category_water')},
+      {"icon": Icons.local_gas_station, "label": _tr('category_fuel')},
+      {"icon": Icons.computer, "label": _tr('category_technology')},
+      {"icon": Icons.car_repair, "label": _tr('category_repair')},
+      {"icon": Icons.coffee, "label": _tr('category_coffee')},
+      {"icon": Icons.pets, "label": _tr('category_pets')},
+      {"icon": Icons.cleaning_services, "label": _tr('category_service')},
+      {"icon": Icons.build, "label": _tr('category_edit')},
+    ];
+  }
 
-  final List<Map<String, dynamic>> _defaultIncomeCategories = [
-    {"icon": Icons.attach_money, "label": "Tiền lương"},
-    {"icon": Icons.savings, "label": "Tiền phụ cấp"},
-    {"icon": Icons.card_giftcard, "label": "Tiền thưởng"},
-    {"icon": Icons.trending_up, "label": "Đầu tư"},
-    {"icon": Icons.account_balance_wallet, "label": "Thu nhập phụ"},
-    {"icon": Icons.work, "label": "Việc làm thêm"},
-    {"icon": Icons.corporate_fare, "label": "Hoa hồng"},
-    {"icon": Icons.real_estate_agent, "label": "Bất động sản"},
-    {"icon": Icons.currency_exchange, "label": "Chênh lệch tỷ giá"},
-    {"icon": Icons.dynamic_feed, "label": "Khác"},
-    {"icon": Icons.build, "label": "Chỉnh sửa"},
-  ];
+  List<Map<String, dynamic>> _getDefaultIncomeCategories() {
+    return [
+      {"icon": Icons.attach_money, "label": _tr('category_salary')},
+      {"icon": Icons.savings, "label": _tr('category_allowance')},
+      {"icon": Icons.card_giftcard, "label": _tr('category_bonus')},
+      {"icon": Icons.trending_up, "label": _tr('category_investment')},
+      {"icon": Icons.account_balance_wallet, "label": _tr('category_other_income')},
+      {"icon": Icons.work, "label": _tr('category_part_time')},
+      {"icon": Icons.corporate_fare, "label": _tr('category_commission')},
+      {"icon": Icons.real_estate_agent, "label": _tr('category_real_estate')},
+      {"icon": Icons.currency_exchange, "label": _tr('category_exchange')},
+      {"icon": Icons.dynamic_feed, "label": _tr('category_other')},
+      {"icon": Icons.build, "label": _tr('category_edit')},
+    ];
+  }
 
   // List of all available icons for category creation
   final List<IconData> availableIcons = [
@@ -159,9 +181,10 @@ class ExpenseViewModel extends ChangeNotifier {
             };
           }).toList();
 
-          // Ensure "Chỉnh sửa" category exists
-          if (!parsedExpenseCategories.any((element) => element["label"] == "Chỉnh sửa")) {
-            parsedExpenseCategories.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+          // Ensure "Edit" category exists
+          String editLabel = _tr('category_edit');
+          if (!parsedExpenseCategories.any((element) => element["label"] == editLabel)) {
+            parsedExpenseCategories.add({"icon": Icons.build, "label": editLabel});
           }
 
           _expenseCategories = parsedExpenseCategories;
@@ -180,9 +203,10 @@ class ExpenseViewModel extends ChangeNotifier {
             };
           }).toList();
 
-          // Ensure "Chỉnh sửa" category exists
-          if (!parsedIncomeCategories.any((element) => element["label"] == "Chỉnh sửa")) {
-            parsedIncomeCategories.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+          // Ensure "Edit" category exists
+          String editLabel = _tr('category_edit');
+          if (!parsedIncomeCategories.any((element) => element["label"] == editLabel)) {
+            parsedIncomeCategories.add({"icon": Icons.build, "label": editLabel});
           }
 
           _incomeCategories = parsedIncomeCategories;
@@ -199,7 +223,7 @@ class ExpenseViewModel extends ChangeNotifier {
       _isInitialized = true;
     } catch (e) {
       _setDefaultCategories();
-      _setError("Error loading categories: ${e.toString()}");
+      _setError(_tr('error_load_categories').replaceAll('{0}', e.toString()));
     } finally {
       _setLoading(false);
     }
@@ -207,8 +231,8 @@ class ExpenseViewModel extends ChangeNotifier {
 
   // Set default categories
   void _setDefaultCategories() {
-    _expenseCategories = List.from(_defaultExpenseCategories);
-    _incomeCategories = List.from(_defaultIncomeCategories);
+    _expenseCategories = _getDefaultExpenseCategories();
+    _incomeCategories = _getDefaultIncomeCategories();
   }
 
   // Save default categories to Firebase
@@ -219,8 +243,12 @@ class ExpenseViewModel extends ChangeNotifier {
 
       String userId = currentUser.uid;
 
+      // Get default categories
+      final defaultExpenseCategories = _getDefaultExpenseCategories();
+      final defaultIncomeCategories = _getDefaultIncomeCategories();
+
       // Convert expense categories to serializable format
-      List<Map<String, dynamic>> serializableExpenseCategories = _defaultExpenseCategories.map((category) {
+      List<Map<String, dynamic>> serializableExpenseCategories = defaultExpenseCategories.map((category) {
         return {
           "label": category["label"],
           "iconCode": (category["icon"] as IconData).codePoint,
@@ -229,7 +257,7 @@ class ExpenseViewModel extends ChangeNotifier {
       }).toList();
 
       // Convert income categories to serializable format
-      List<Map<String, dynamic>> serializableIncomeCategories = _defaultIncomeCategories.map((category) {
+      List<Map<String, dynamic>> serializableIncomeCategories = defaultIncomeCategories.map((category) {
         return {
           "label": category["label"],
           "iconCode": (category["icon"] as IconData).codePoint,
@@ -245,7 +273,7 @@ class ExpenseViewModel extends ChangeNotifier {
         'lastUpdated': FieldValue.serverTimestamp()
       }, SetOptions(merge: true));
     } catch (e) {
-      _setError("Lỗi khi tạo danh mục mặc định: ${e.toString()}");
+      _setError(_tr('error_default_categories').replaceAll('{0}', e.toString()));
     }
   }
 
@@ -257,32 +285,35 @@ class ExpenseViewModel extends ChangeNotifier {
 
   // Add a new category
   Future<bool> addCategory(String name, IconData icon, bool isExpense) async {
-    // Loại bỏ khoảng trắng thừa và chuyển về chữ thường để so sánh
-    name = name.trim().toLowerCase();
+    // Remove extra whitespace and convert to lowercase for comparison
+    name = name.trim();
+    String nameLower = name.toLowerCase();
 
-    // Chọn danh sách danh mục phù hợp
+    // Select the appropriate category list
     List<Map<String, dynamic>> targetList = isExpense
         ? _expenseCategories
         : _incomeCategories;
 
-    // Kiểm tra tên danh mục đã tồn tại (không phân biệt hoa thường)
+    // Check if category already exists (case insensitive)
     bool categoryExists = targetList.any(
-            (category) => category["label"].toString().toLowerCase() == name
+            (category) => category["label"].toString().toLowerCase() == nameLower
     );
 
     if (categoryExists) {
-      _setError("Danh mục đã tồn tại!");
+      _setError(_tr('category_exists'));
       return false;
     }
 
     if (name.isEmpty) {
-      _setError("Vui lòng nhập tên danh mục!");
+      _setError(_tr('enter_category_name'));
       return false;
     }
 
     try {
-      // Remove "Chỉnh sửa" entry to add it last
-      targetList.removeWhere((element) => element["label"] == "Chỉnh sửa");
+      String editLabel = _tr('category_edit');
+
+      // Remove "Edit" entry to add it last
+      targetList.removeWhere((element) => element["label"] == editLabel);
 
       // Add new category
       targetList.add({
@@ -290,8 +321,8 @@ class ExpenseViewModel extends ChangeNotifier {
         "label": name,
       });
 
-      // Add "Chỉnh sửa" entry back
-      targetList.add({"icon": Icons.build, "label": "Chỉnh sửa"});
+      // Add "Edit" entry back
+      targetList.add({"icon": Icons.build, "label": editLabel});
 
       if (isExpense) {
         _expenseCategories = targetList;
@@ -304,7 +335,7 @@ class ExpenseViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _setError("Lỗi khi thêm danh mục: ${e.toString()}");
+      _setError(_tr('error_add_category').replaceAll('{0}', e.toString()));
       return false;
     }
   }
@@ -316,8 +347,9 @@ class ExpenseViewModel extends ChangeNotifier {
     try {
       List<Map<String, dynamic>> targetList = isExpense ? _expenseCategories : _incomeCategories;
 
-      // Don't allow deleting "Chỉnh sửa" category
-      if (targetList[index]["label"] == "Chỉnh sửa") {
+      // Don't allow deleting "Edit" category
+      String editLabel = _tr('category_edit');
+      if (targetList[index]["label"] == editLabel) {
         return false;
       }
 
@@ -334,7 +366,7 @@ class ExpenseViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _setError("Lỗi khi xóa danh mục: ${e.toString()}");
+      _setError(_tr('error_delete_category').replaceAll('{0}', e.toString()));
       return false;
     } finally {
       _setLoading(false);
@@ -347,7 +379,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Choose the correct list based on transaction type
       List<Map<String, dynamic>> targetList = isExpense ? _expenseCategories : _incomeCategories;
 
-      // Prevent reordering the "Chỉnh sửa" category
+      // Prevent reordering the "Edit" category
       if (oldIndex == targetList.length - 1 || newIndex == targetList.length - 1) {
         return false;
       }
@@ -374,7 +406,7 @@ class ExpenseViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _setError("Lỗi khi sắp xếp danh mục: ${e.toString()}");
+      _setError(_tr('error_save_category').replaceAll('{0}', e.toString()));
       return false;
     } finally {
       _setLoading(false);
@@ -419,7 +451,7 @@ class ExpenseViewModel extends ChangeNotifier {
         'lastUpdated': FieldValue.serverTimestamp()
       }, SetOptions(merge: true));
     } catch (e) {
-      _setError("Lỗi khi lưu danh mục: ${e.toString()}");
+      _setError(_tr('error_save_category').replaceAll('{0}', e.toString()));
     } finally {
       _setLoading(false);
     }
@@ -448,7 +480,7 @@ class ExpenseViewModel extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError("Lỗi khi lưu giao dịch: ${e.toString()}");
+      _setError(_tr('error_save_transaction').replaceAll('{0}', e.toString()));
       return false;
     } finally {
       _setLoading(false);
@@ -468,6 +500,32 @@ class ExpenseViewModel extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  void refreshEditCategoryLabels() {
+    String editLabel = _tr('category_edit');
+
+    _expenseCategories = _expenseCategories.map((category) {
+      if (category['icon'] == Icons.build) {
+        return {
+          "icon": Icons.build,
+          "label": editLabel,
+        };
+      }
+      return category;
+    }).toList();
+
+    _incomeCategories = _incomeCategories.map((category) {
+      if (category['icon'] == Icons.build) {
+        return {
+          "icon": Icons.build,
+          "label": editLabel,
+        };
+      }
+      return category;
+    }).toList();
+
     notifyListeners();
   }
 }

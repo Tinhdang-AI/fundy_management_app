@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'utils/currency_formatter.dart';
 import 'viewmodels/auth_viewmodel.dart';
@@ -17,6 +18,8 @@ import 'views/screens/report_screen.dart';
 import 'views/screens/more_screen.dart';
 import 'views/screens/search_screen.dart';
 import 'views/screens/forgot_password_screen.dart';
+import 'localization/app_localizations.dart';
+import 'providers/locale_provider.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -32,7 +35,12 @@ void main() async {
   runApp(FundyApp());
 }
 
-class FundyApp extends StatelessWidget {
+class FundyApp extends StatefulWidget {
+  @override
+  _FundyAppState createState() => _FundyAppState();
+}
+
+class _FundyAppState extends State<FundyApp> {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -44,42 +52,66 @@ class FundyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
         ChangeNotifierProvider(create: (_) => SearchViewModel()),
         ChangeNotifierProvider(create: (_) => MoreViewModel()),
+        // Thêm LocaleProvider cho hỗ trợ đa ngôn ngữ
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Fundy',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.white,
-            iconTheme: IconThemeData(color: Colors.black),
-            titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-            elevation: 0,
-          ),
-          cardTheme: CardTheme(
-            color: Colors.white,
-            elevation: 2,
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Fundy',
+            theme: ThemeData(
+              primarySwatch: Colors.blue,
+              scaffoldBackgroundColor: Colors.white,
+              appBarTheme: AppBarTheme(
+                backgroundColor: Colors.white,
+                iconTheme: IconThemeData(color: Colors.black),
+                titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                elevation: 0,
+              ),
+              cardTheme: CardTheme(
+                color: Colors.white,
+                elevation: 2,
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ),
-          ),
-        ),
-        home: SplashScreen(),
-        routes: {
-          '/login': (context) => LoginScreen(),
-          '/signup': (context) => SignupScreen(),
-          '/expense': (context) => ExpenseScreen(),
-          '/calendar': (context) => CalendarScreen(),
-          '/report': (context) => ReportScreen(),
-          '/more': (context) => MoreScreen(),
-          '/search': (context) => SearchScreen(),
-          '/forgot_password': (context) => ForgotPasswordScreen(),
+            // Cấu hình đa ngôn ngữ
+            locale: localeProvider.locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: [
+              const AppLocalizationsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: SplashScreen(),
+            routes: {
+              '/login': (context) => LoginScreen(),
+              '/signup': (context) => SignupScreen(),
+              '/expense': (context) => ExpenseScreen(),
+              '/calendar': (context) => CalendarScreen(),
+              '/report': (context) => ReportScreen(),
+              '/more': (context) => MoreScreen(),
+              '/search': (context) => SearchScreen(),
+              '/forgot_password': (context) => ForgotPasswordScreen(),
+            },
+          );
         },
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      localeProvider.loadSavedLocale();
+    });
   }
 }

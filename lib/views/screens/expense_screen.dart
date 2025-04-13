@@ -5,7 +5,8 @@ import '../../viewmodels/expense_viewmodel.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/message_utils.dart';
 import '../../views/widgets/app_bottom_navigation_bar.dart';
-import '../../views/widgets/custom_date_picker.dart'; // Import widget chọn lịch chung
+import '../../views/widgets/custom_date_picker.dart';
+import '/localization/app_localizations_extension.dart'; // Import localization extension
 
 class ExpenseScreen extends StatefulWidget {
   @override
@@ -78,7 +79,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!expenseViewModel.isEditMode)
-            // Sử dụng widget chọn lịch chung
+            // Use common date picker widget
               CustomDatePicker(
                 selectedDate: selectedDate,
                 onDateChanged: (date) {
@@ -97,7 +98,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               _buildCategoryEditor(expenseViewModel)
             else
               expenseCategories.isEmpty || incomeCategories.isEmpty
-                  ? Center(child: Text("Đang tải danh mục..."))
+                  ? Center(child: Text(context.tr('loading_categories')))
                   : Expanded(child: _buildCategoryGrid(expenseViewModel)),
             SizedBox(height: 20),
             if (!expenseViewModel.isEditMode) _buildSubmitButton(
@@ -143,8 +144,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildTabButton("Tiền chi", 0),
-          _buildTabButton("Tiền thu", 1),
+          _buildTabButton(context.tr('expense'), 0),
+          _buildTabButton(context.tr('income'), 1),
         ],
       ),
     );
@@ -200,7 +201,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Ghi chú
+        // Note
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -209,7 +210,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               SizedBox(
                 width: 70,
                 child: Text(
-                  "Ghi chú",
+                  context.tr('note'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -228,7 +229,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         ),
         SizedBox(height: 12),
 
-        // Tiền chi/thu with dynamic currency symbol
+        // Expense/Income with dynamic currency symbol
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -237,7 +238,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               SizedBox(
                 width: 70,
                 child: Text(
-                  "Tiền ${selectedTab == 0 ? 'chi' : 'thu'}",
+                  selectedTab == 0 ? context.tr('expense') : context.tr('income'),
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -294,7 +295,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       itemCount: categories.length,
       itemBuilder: (context, index) {
         bool isSelected = selectedCategory == categories[index]["label"];
-        bool isEditButton = categories[index]["label"] == "Chỉnh sửa";
+        bool isEditButton = categories[index]["label"] == context.tr('category_edit');
 
         return GestureDetector(
           onTap: () {
@@ -389,12 +390,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   Widget _buildCategoryEditor(ExpenseViewModel viewModel) {
+    String categoryType = selectedTab == 0
+        ? context.tr('expense_category')
+        : context.tr('income_category');
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Chỉnh sửa danh mục ${selectedTab == 0 ? 'Chi tiêu' : 'Thu nhập'}",
+            context.tr('edit_categories', [categoryType]),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 16),
@@ -410,7 +415,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                      "Thêm danh mục mới",
+                      context.tr('add_new_category'),
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16
@@ -424,7 +429,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         child: TextField(
                           controller: categoryNameController,
                           decoration: InputDecoration(
-                            hintText: "Tên danh mục",
+                            hintText: context.tr('category_name'),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -473,7 +478,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                           ),
                         ),
                         child: Text(
-                          "Thêm",
+                          context.tr('add'),
                           style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold
@@ -490,7 +495,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           SizedBox(height: 16),
 
           Text(
-              "Danh sách danh mục hiện tại:",
+              context.tr('current_categories'),
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16
@@ -517,7 +522,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         ? viewModel.expenseCategories[index]
                         : viewModel.incomeCategories[index];
 
-                    bool isEditCategory = category["label"] == "Chỉnh sửa";
+                    bool isEditCategory = category["label"] == context.tr('category_edit');
 
                     return ListTile(
                       key: ValueKey(category["label"]),
@@ -591,7 +596,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           ),
         )
             : Text(
-          "Nhập khoản tiền ${selectedTab == 0 ? 'chi' : 'thu'}",
+          selectedTab == 0
+              ? context.tr('add_expense')
+              : context.tr('add_income'),
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
@@ -606,7 +613,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Chọn icon"),
+          title: Text(context.tr('select_icon')),
           backgroundColor: Colors.white,
           content: Container(
             width: double.maxFinite,
@@ -641,7 +648,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Hủy"),
+              child: Text(context.tr('cancel')),
             ),
           ],
         );
@@ -655,7 +662,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     if (categoryNameController.text.isEmpty ||
         selectedIconForNewCategory == null) {
       MessageUtils.showErrorMessage(
-          context, "Vui lòng nhập tên danh mục và chọn biểu tượng!");
+          context, context.tr('enter_category_icon'));
       return;
     }
 
@@ -666,7 +673,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
 
     if (!success) {
-      // Nếu thêm không thành công, hiển thị lỗi từ ViewModel
+      // If adding fails, display error from ViewModel
       if (viewModel.errorMessage != null) {
         MessageUtils.showErrorMessage(context, viewModel.errorMessage!);
       }
@@ -676,7 +683,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         selectedIconForNewCategory = null;
       });
       MessageUtils.showSuccessMessage(
-          context, "Đã thêm danh mục mới thành công");
+          context, context.tr('add_category_success'));
     }
   }
 
@@ -684,10 +691,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   Future<void> _deleteCategory(ExpenseViewModel viewModel, int index) async {
     final confirmed = await MessageUtils.showConfirmationDialog(
       context: context,
-      title: "Xác nhận xóa",
-      message: "Bạn có chắc chắn muốn xóa danh mục này không?",
-      confirmLabel: "Xóa",
-      cancelLabel: "Hủy",
+      title: context.tr('confirm'),
+      message: context.tr('confirm_delete_category'),
+      confirmLabel: context.tr('delete'),
+      cancelLabel: context.tr('cancel'),
     );
 
     if (confirmed == true) {
@@ -697,7 +704,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       );
 
       if (success) {
-        MessageUtils.showSuccessMessage(context, "Đã xóa danh mục thành công");
+        MessageUtils.showSuccessMessage(context, context.tr('delete_category_success'));
       }
     }
   }
@@ -706,13 +713,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   Future<void> _saveExpense(ExpenseViewModel viewModel) async {
     if (amountController.text.isEmpty || selectedCategory.isEmpty) {
       MessageUtils.showErrorMessage(
-          context, "Vui lòng nhập số tiền và chọn danh mục!");
+          context, context.tr('enter_amount_category'));
       return;
     }
 
     double amount = parseFormattedCurrency(amountController.text);
     if (amount <= 0) {
-      MessageUtils.showErrorMessage(context, "Số tiền phải lớn hơn 0!");
+      MessageUtils.showErrorMessage(context, context.tr('amount_greater_than_zero'));
       return;
     }
 
@@ -737,11 +744,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         selectedCategoryIcon = "";
       });
 
+      String type = selectedTab == 0 ? context.tr('expense') : context.tr('income');
       MessageUtils.showSuccessMessage(
           context,
-          selectedTab == 0
-              ? "Đã lưu khoản chi thành công!"
-              : "Đã lưu khoản thu thành công!"
+          context.tr('add_transaction_success', [type])
       );
     }
   }

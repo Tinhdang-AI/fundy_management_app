@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/message_utils.dart';
+import '../../viewmodels/expense_viewmodel.dart';
+import '/localization/app_localizations_extension.dart'; // Import localization extension
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -97,9 +100,29 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.language, color: Colors.white),
+            onPressed: () {
+              _showLanguageSelector(context);
+            },
+          ),
+        ],
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
-        height: MediaQuery.of(context).size.height,
-        width: MediaQuery.of(context).size.width,
+        height: MediaQuery
+            .of(context)
+            .size
+            .height,
+        width: MediaQuery
+            .of(context)
+            .size
+            .width,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -114,7 +137,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(height: 40),
                   Image.asset(
                     'assets/logo_icon.png',
                     width: 100,
@@ -125,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Welcome text
                   Text(
-                    'Chào mừng bạn trở lại!',
+                    context.tr('welcome_back'),
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -134,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   Text(
-                    'Nhập email và mật khẩu để tiếp tục',
+                    context.tr('login_prompt'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -146,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Email input field
                   _buildTextField(
-                    hintText: 'Email',
+                    hintText: context.tr('email'),
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.email_outlined,
@@ -156,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Password input field
                   _buildTextField(
-                    hintText: 'Mật khẩu',
+                    hintText: context.tr('password'),
                     controller: passwordController,
                     isPassword: true,
                     prefixIcon: Icons.lock_outline,
@@ -172,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushNamed(context, '/forgot_password');
                       },
                       child: Text(
-                        'Quên mật khẩu?',
+                        context.tr('forgot_password'),
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -200,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       child: Text(
-                        'Đăng Nhập',
+                        context.tr('login'),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -220,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 15),
                         child: Text(
-                          "hoặc",
+                          context.tr('or'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -241,10 +263,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton.icon(
-                      onPressed: () => _signInWithGoogle(context, authViewModel),
-                      icon: Image.asset('assets/google_icon.png', width: 24, height: 24),
+                      onPressed: () =>
+                          _signInWithGoogle(context, authViewModel),
+                      icon: Image.asset(
+                          'assets/google_icon.png', width: 24, height: 24),
                       label: Text(
-                        'Đăng nhập bằng Google',
+                        context.tr('login_with_google'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -268,14 +292,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Sign up link
                   Text.rich(
                     TextSpan(
-                      text: 'Chưa có tài khoản? ',
+                      text: context.tr('no_account'),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white,
                       ),
                       children: [
                         TextSpan(
-                          text: 'Đăng ký',
+                          text: context.tr('signup'),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -306,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
     String password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      MessageUtils.showErrorMessage(context, "Vui lòng nhập đầy đủ email và mật khẩu!");
+      MessageUtils.showErrorMessage(context, context.tr('enter_email_password'));
       return;
     }
 
@@ -314,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success) {
       // Show success message before navigation
-      MessageUtils.showSuccessMessage(context, "Đăng nhập thành công!");
+      MessageUtils.showSuccessMessage(context, context.tr('login_success'));
 
       // Slight delay to allow the message to be seen
       await Future.delayed(Duration(milliseconds: 500));
@@ -331,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success) {
       // Show success message before navigation
-      MessageUtils.showSuccessMessage(context, "Đăng nhập thành công!");
+      MessageUtils.showSuccessMessage(context, context.tr('login_success'));
 
       // Slight delay to allow the message to be seen
       await Future.delayed(Duration(milliseconds: 500));
@@ -340,5 +364,117 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacementNamed(context, '/expense');
       }
     }
+  }
+
+  void _showLanguageSelector(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    String selectedLanguageCode = localeProvider.locale.languageCode;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(context.tr('select_language')),
+            backgroundColor: Colors.white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildLanguageOption(
+                  context,
+                  code: 'vi',
+                  name: context.tr('vietnamese'),
+                  isSelected: selectedLanguageCode == 'vi',
+                  onTap: () {
+                    setState(() {
+                      selectedLanguageCode = 'vi';
+                    });
+                  },
+                ),
+                _buildLanguageOption(
+                  context,
+                  code: 'en',
+                  name: context.tr('english'),
+                  isSelected: selectedLanguageCode == 'en',
+                  onTap: () {
+                    setState(() {
+                      selectedLanguageCode = 'en';
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.tr('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (selectedLanguageCode != localeProvider.locale.languageCode) {
+                    Locale newLocale = Locale(
+                      selectedLanguageCode,
+                      selectedLanguageCode == 'vi' ? 'VN' : 'US',
+                    );
+                    localeProvider.setLocale(newLocale);
+
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      final expenseViewModel = Provider.of<ExpenseViewModel>(context, listen: false);
+                      expenseViewModel.setContext(context);
+                      expenseViewModel.refreshEditCategoryLabels();
+                    });
+
+                    Navigator.pop(context);
+
+                    MessageUtils.showSuccessMessage(
+                      context,
+                      context.tr('language_changed', [
+                        selectedLanguageCode == 'vi'
+                            ? context.tr('vietnamese')
+                            : context.tr('english')
+                      ]),
+                    );
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                ),
+                child: Text(context.tr('save')),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(
+      BuildContext context, {
+        required String code,
+        required String name,
+        required bool isSelected,
+        required VoidCallback onTap,
+      }) {
+    return ListTile(
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          image: DecorationImage(
+            image: AssetImage('assets/flags/$code.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+      title: Text(name),
+      trailing: isSelected
+          ? Icon(Icons.check_circle, color: Colors.green)
+          : null,
+      onTap: onTap,
+      selected: isSelected,
+    );
   }
 }
