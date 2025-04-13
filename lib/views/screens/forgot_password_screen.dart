@@ -1,6 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:flutter/gestures.dart';
+import 'package:provider/provider.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../utils/message_utils.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   @override
@@ -9,127 +12,247 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
 
   Future<void> _resetPassword() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     String email = _emailController.text.trim();
 
+    // Client-side validation
     if (email.isEmpty) {
-      showAlert("Vui lòng nhập email!");
+      MessageUtils.showErrorMessage(context, "Vui lòng nhập email!");
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
     if (!EmailValidator.validate(email)) {
-      showAlert("Email không hợp lệ!");
+      MessageUtils.showErrorMessage(context, "Email không hợp lệ! Vui lòng nhập đúng định dạng.");
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
     try {
-      // Kiểm tra xem email đã được đăng ký chưa
-      List<String> signInMethods =
-      await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      // Get access to auth view model
+      final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
 
-      if (signInMethods.isEmpty) {
-        showAlert("Email chưa được đăng ký!");
-        return;
+      // Use view model to reset password
+      bool success = await authViewModel.resetPassword(email);
+
+      if (success) {
+        // Show success message and navigate
+        _showSuccessAndNavigate("Email đặt lại mật khẩu đã được gửi!\n\nVui lòng kiểm tra hộp thư của bạn và làm theo hướng dẫn để đặt lại mật khẩu.");
+      } else if (authViewModel.errorMessage != null) {
+        // Display error from view model
+        MessageUtils.showErrorMessage(context, authViewModel.errorMessage!);
       }
-
-      // Nếu email hợp lệ, gửi mã đặt lại mật khẩu
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      showAlert("Email đặt lại mật khẩu đã được gửi!");
     } catch (e) {
-      showAlert("Lỗi: ${e.toString()}");
+      MessageUtils.showErrorMessage(context, "Lỗi: ${e.toString()}");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void showAlert(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        backgroundColor: Colors.white,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.info_outline, size: 50, color: Colors.blue),
-            SizedBox(height: 10),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 15),
-            Divider(color: Colors.grey.shade300),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.blue.shade800,
-                ),
-                child: Text(
-                  "OK",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+  void _showSuccessAndNavigate(String message) {
+    MessageUtils.showAlertDialog(
+        context: context,
+        title: "Thành công!",
+        message: message,
+        okLabel: "OK",
+        onOk: () {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Quên Mật Khẩu")),
-      body: Padding(
-        padding: EdgeInsets.only(top: 100, left: 30, right: 30),
-        child: Column(
-          children: [
-            Text(
-              "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 20),
-            Container(
-              width: 350,
-              height: 50,
-              child: TextField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: "Email",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.orange.shade300, Colors.deepOrange.shade400],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 10),
+
+                  // Lock icon
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 10,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.lock_reset,
+                      size: 55,
+                      color: Colors.deepOrange,
+                    ),
                   ),
-                ),
+
+                  SizedBox(height: 10),
+
+                  Text(
+                    "Quên Mật Khẩu?",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  SizedBox(height: 10),
+
+                  Text(
+                    "Nhập email của bạn để nhận liên kết đặt lại mật khẩu",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+
+                  SizedBox(height: 10),
+
+                  // Email field
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: "Email",
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+                      ),
+                      prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade600),
+                    ),
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // Send email button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _resetPassword,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.deepOrange,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        elevation: 5,
+                        shadowColor: Colors.black38,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.deepOrange,
+                          strokeWidth: 3,
+                        ),
+                      )
+                          : Text(
+                        "Gửi Email",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15),
+
+                  // Back to login link
+                  Text.rich(
+                    TextSpan(
+                      text: "Quay lại ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: "Đăng nhập",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.pop(context);
+                            },
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _resetPassword,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: Text(
-                "Gửi Email",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

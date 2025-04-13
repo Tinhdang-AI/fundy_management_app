@@ -16,6 +16,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -26,25 +27,63 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  Widget _buildTextField(String hintText, TextEditingController controller, {bool isPassword = false}) {
+  // Custom text field with consistent styling
+  Widget _buildTextField({
+    required String hintText,
+    required TextEditingController controller,
+    bool isPassword = false,
+    bool isConfirmPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+    IconData? prefixIcon,
+  }) {
     return TextField(
       controller: controller,
-      obscureText: isPassword && _obscurePassword,
+      obscureText: isPassword ? _obscurePassword : (isConfirmPassword ? _obscureConfirmPassword : false),
+      keyboardType: keyboardType,
+      style: TextStyle(fontSize: 16),
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+        ),
+        prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: Colors.grey.shade600) : null,
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey.shade600,
+          ),
           onPressed: () {
             setState(() {
               _obscurePassword = !_obscurePassword;
             });
           },
         )
-            : null,
+            : (isConfirmPassword
+            ? IconButton(
+          icon: Icon(
+            _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey.shade600,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscureConfirmPassword = !_obscureConfirmPassword;
+            });
+          },
+        )
+            : null),
       ),
     );
   }
@@ -57,173 +96,239 @@ class _SignupScreenState extends State<SignupScreen> {
     // Show loading indicator if authentication is in progress
     if (authViewModel.isLoading) {
       return Scaffold(
-        backgroundColor: Colors.orange.shade200,
+        backgroundColor: Colors.orange.shade100,
         body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
+          child: CircularProgressIndicator(color: Colors.deepOrange),
         ),
       );
     }
 
+    // Check for error message from view model and display it
+    if (authViewModel.errorMessage != null) {
+      // Use post-frame callback to show the error message after the frame is rendered
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        MessageUtils.showErrorMessage(context, authViewModel.errorMessage!);
+        // The error will be cleared on the next frame
+      });
+    }
+
     return Scaffold(
-      backgroundColor: Colors.orange,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.only(top: 80, left: 30, right: 30),
-          child: Column(
-            children: [
-              Text(
-                'Tạo tài khoản mới!',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Điền thông tin bên dưới để tạo tài khoản!',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Name field
-              Container(
-                width: 350,
-                height: 50,
-                child: _buildTextField('Họ và Tên', nameController),
-              ),
-              SizedBox(height: 10),
-
-              // Email field
-              Container(
-                width: 350,
-                height: 50,
-                child: _buildTextField('Email', emailController),
-              ),
-              SizedBox(height: 10),
-
-              // Password field
-              Container(
-                width: 350,
-                height: 50,
-                child: _buildTextField('Mật khẩu', passwordController, isPassword: true),
-              ),
-              SizedBox(height: 10),
-
-              // Confirm password field
-              Container(
-                width: 350,
-                height: 50,
-                child: _buildTextField('Xác nhận lại mật khẩu', confirmPasswordController, isPassword: true),
-              ),
-              SizedBox(height: 20),
-
-              // Signup button
-              Container(
-                width: 350,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => _signUp(context, authViewModel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(horizontal: 100, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: Text(
-                      'Đăng Ký',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Divider
-              Row(
-                children: [
-                  Expanded(
-                    child: Divider(color: Colors.black, thickness: 2),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 2),
-                    child: Text("hoặc", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  Expanded(
-                    child: Divider(color: Colors.black, thickness: 2),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-
-              // Google signup button
-              Container(
-                width: 350,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () => _signInWithGoogle(context, authViewModel),
-                  icon: Image.asset('assets/google_icon.png', width: 24),
-                  label: Text(
-                      'Đăng ký bằng Google',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Login link
-              Text.rich(
-                TextSpan(
-                  text: 'Đã có tài khoản? ',
-                  style: TextStyle(color: Colors.black),
-                  children: [
-                    TextSpan(
-                      text: 'Đăng nhập',
-                      style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontWeight: FontWeight.bold,
+      resizeToAvoidBottomInset: false, // Prevent resizing when keyboard appears
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.orange.shade300, Colors.deepOrange.shade400],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 30),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Header section
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      SizedBox(height: 20),
+                      // App logo/icon
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.person_add,
+                          size: 45,
+                          color: Colors.deepOrange,
+                        ),
                       ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          Navigator.pushNamed(context, '/login');
-                        },
-                    ),
-                  ],
+                      SizedBox(height: 10),
+                      Text(
+                        'Tạo tài khoản mới!',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Điền thông tin bên dưới để tạo tài khoản!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: 20),
 
-              // Show error message if any
-              if (authViewModel.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      authViewModel.errorMessage!,
-                      style: TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+                // Form fields section
+                Expanded(
+                  flex: 5,
+                  child: SingleChildScrollView(
+                    physics: BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        // Name field
+                        _buildTextField(
+                          hintText: 'Họ và Tên',
+                          controller: nameController,
+                          prefixIcon: Icons.person_outline,
+                        ),
+                        SizedBox(height: 16),
+                        // Email field
+                        _buildTextField(
+                          hintText: 'Email',
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          prefixIcon: Icons.email_outlined,
+                        ),
+                        SizedBox(height: 16),
+                        // Password field
+                        _buildTextField(
+                          hintText: 'Mật khẩu',
+                          controller: passwordController,
+                          isPassword: true,
+                          prefixIcon: Icons.lock_outline,
+                        ),
+                        SizedBox(height: 16),
+                        // Confirm password field
+                        _buildTextField(
+                          hintText: 'Xác nhận lại mật khẩu',
+                          controller: confirmPasswordController,
+                          isConfirmPassword: true,
+                          prefixIcon: Icons.lock_outline,
+                        ),
+                        SizedBox(height: 25),
+                        // Signup button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: () => _signUp(context, authViewModel),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.deepOrange,
+                              elevation: 5,
+                              shadowColor: Colors.black38,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                            child: Text(
+                              'Đăng Ký',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-            ],
+
+                // Footer section
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    children: [
+                      // Divider
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(color: Colors.white70, thickness: 1),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 15),
+                            child: Text(
+                              "hoặc",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(color: Colors.white70, thickness: 1),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 15),
+                      // Google signup button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _signInWithGoogle(context, authViewModel),
+                          icon: Image.asset('assets/google_icon.png', width: 24, height: 24),
+                          label: Text(
+                            'Đăng ký bằng Google',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            elevation: 5,
+                            shadowColor: Colors.black38,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 15),
+                      // Login link
+                      Text.rich(
+                        TextSpan(
+                          text: 'Đã có tài khoản? ',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Đăng nhập',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () {
+                                  Navigator.pushNamed(context, '/login');
+                                },
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -278,7 +383,14 @@ class _SignupScreenState extends State<SignupScreen> {
     bool success = await authViewModel.signInWithGoogle();
 
     if (success) {
-      Navigator.pushReplacementNamed(context, '/expense');
+      MessageUtils.showSuccessMessage(context, "Đăng nhập thành công!");
+
+      // Slight delay to allow the message to be seen
+      await Future.delayed(Duration(milliseconds: 500));
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/expense');
+      }
     }
   }
 }

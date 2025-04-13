@@ -384,12 +384,6 @@ class AuthViewModel extends ChangeNotifier {
     _clearError();
     _setLoading(true);
     try {
-      List<String> signInMethods =
-      await _authService.fetchSignInMethodsForEmail(email);
-      if (signInMethods.isEmpty) {
-        _setError("Email chưa được đăng ký!");
-        return false;
-      }
       await _authService.sendPasswordResetEmail(email);
       return true;
     } catch (e) {

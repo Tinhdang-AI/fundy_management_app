@@ -21,6 +21,54 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Custom text field with consistent styling
+  Widget _buildTextField({
+    required String hintText,
+    required TextEditingController controller,
+    bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+    IconData? prefixIcon,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword && _obscurePassword,
+      keyboardType: keyboardType,
+      style: TextStyle(fontSize: 16),
+      decoration: InputDecoration(
+        hintText: hintText,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.deepOrange, width: 2),
+        ),
+        prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: Colors.grey.shade600) : null,
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey.shade600,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+        )
+            : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Access the AuthViewModel using Provider
@@ -29,202 +77,223 @@ class _LoginScreenState extends State<LoginScreen> {
     // Show loading indicator if authentication is in progress
     if (authViewModel.isLoading) {
       return Scaffold(
-        backgroundColor: Colors.orange.shade200,
+        backgroundColor: Colors.orange.shade100,
         body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
+          child: CircularProgressIndicator(color: Colors.deepOrange),
         ),
       );
     }
 
+    // Check for error message from view model and display it
+    if (authViewModel.errorMessage != null) {
+      // Use post-frame callback to show the error message after the frame is rendered
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        MessageUtils.showErrorMessage(context, authViewModel.errorMessage!);
+        // Clear the error message after showing it
+        Future.delayed(Duration(milliseconds: 100), () {
+          // The error will be cleared on the next frame
+        });
+      });
+    }
+
     return Scaffold(
-      backgroundColor: Colors.orange,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.only(top: 125, left: 30, right: 30),
-          child: Column(
-            children: [
-              Text(
-                'Chào mừng bạn trở lại!',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Nhập email và mật khẩu để tiếp tục.',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Email input field
-              Container(
-                width: 350,
-                height: 50,
-                child: TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Password input field
-              Container(
-                width: 350,
-                height: 50,
-                child: TextField(
-                  controller: passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    hintText: 'Mật khẩu',
-                    filled: true,
-                    fillColor: Colors.white,
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
-              ),
-
-              SizedBox(height: 5),
-
-              // Forgot password link
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/forgot_password');
-                  },
-                  child: Text(
-                    'Quên mật khẩu?',
-                    style: TextStyle(
-                        color: Colors.blueAccent, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Login button
-              Container(
-                width: 350,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => _login(context, authViewModel),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: Text(
-                    'Đăng Nhập',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Divider
-              Row(
+      body: Container(
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.orange.shade300, Colors.deepOrange.shade400],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: Divider(color: Colors.black, thickness: 2),
+                  SizedBox(height: 40),
+                  Image.asset(
+                    'assets/logo_icon.png',
+                    width: 100,
+                    height: 100,
                   ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 2),
-                    child: Text("hoặc", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+                  SizedBox(height: 10),
+
+                  // Welcome text
+                  Text(
+                    'Chào mừng bạn trở lại!',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  Expanded(
-                    child: Divider(color: Colors.black, thickness: 2),
+
+                  Text(
+                    'Nhập email và mật khẩu để tiếp tục',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
                   ),
+
+                  SizedBox(height: 20),
+
+                  // Email input field
+                  _buildTextField(
+                    hintText: 'Email',
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    prefixIcon: Icons.email_outlined,
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Password input field
+                  _buildTextField(
+                    hintText: 'Mật khẩu',
+                    controller: passwordController,
+                    isPassword: true,
+                    prefixIcon: Icons.lock_outline,
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Forgot password link
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/forgot_password');
+                      },
+                      child: Text(
+                        'Quên mật khẩu?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15),
+
+                  // Login button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () => _login(context, authViewModel),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.deepOrange,
+                        elevation: 5,
+                        shadowColor: Colors.black38,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: Text(
+                        'Đăng Nhập',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15),
+
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(color: Colors.white70, thickness: 1),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 15),
+                        child: Text(
+                          "hoặc",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(color: Colors.white70, thickness: 1),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 15),
+
+                  // Google Sign-In button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _signInWithGoogle(context, authViewModel),
+                      icon: Image.asset('assets/google_icon.png', width: 24, height: 24),
+                      label: Text(
+                        'Đăng nhập bằng Google',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        elevation: 5,
+                        shadowColor: Colors.black38,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15),
+
+                  // Sign up link
+                  Text.rich(
+                    TextSpan(
+                      text: 'Chưa có tài khoản? ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Đăng ký',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.pushNamed(context, '/signup');
+                            },
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
                 ],
               ),
-
-              SizedBox(height: 10),
-
-              // Google Sign-In button
-              Container(
-                width: 350,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () => _signInWithGoogle(context, authViewModel),
-                  icon: Image.asset('assets/google_icon.png', width: 24),
-                  label: Text(
-                    'Đăng nhập bằng Google',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-
-              // Sign up link
-              Text.rich(
-                TextSpan(
-                  text: 'Chưa có tài khoản? ',
-                  style: TextStyle(color: Colors.black),
-                  children: [
-                    TextSpan(
-                      text: 'Đăng ký',
-                      style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          Navigator.pushNamed(context, '/signup');
-                        },
-                    ),
-                  ],
-                ),
-              ),
-
-              // Show error message if any
-              if (authViewModel.errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      authViewModel.errorMessage!,
-                      style: TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -244,7 +313,15 @@ class _LoginScreenState extends State<LoginScreen> {
     bool success = await authViewModel.signInWithEmail(email, password);
 
     if (success) {
-      Navigator.pushReplacementNamed(context, '/expense');
+      // Show success message before navigation
+      MessageUtils.showSuccessMessage(context, "Đăng nhập thành công!");
+
+      // Slight delay to allow the message to be seen
+      await Future.delayed(Duration(milliseconds: 500));
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/expense');
+      }
     }
   }
 
@@ -253,7 +330,15 @@ class _LoginScreenState extends State<LoginScreen> {
     bool success = await authViewModel.signInWithGoogle();
 
     if (success) {
-      Navigator.pushReplacementNamed(context, '/expense');
+      // Show success message before navigation
+      MessageUtils.showSuccessMessage(context, "Đăng nhập thành công!");
+
+      // Slight delay to allow the message to be seen
+      await Future.delayed(Duration(milliseconds: 500));
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/expense');
+      }
     }
   }
 }
