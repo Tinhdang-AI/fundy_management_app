@@ -32,8 +32,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
     // Initialize view model once the widget is inserted into the tree
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final expenseViewModel = Provider.of<ExpenseViewModel>(
-          context, listen: false);
+      final expenseViewModel = Provider.of<ExpenseViewModel>(context, listen: false);
+      expenseViewModel.setContext(context); // Add this line
       expenseViewModel.loadCategories();
     });
   }
@@ -394,6 +394,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         ? context.tr('expense_category')
         : context.tr('income_category');
 
+    final displayCategories = selectedTab == 0
+        ? viewModel.expenseCategories.where((cat) => cat["label"] != context.tr('category_edit')).toList()
+        : viewModel.incomeCategories.where((cat) => cat["label"] != context.tr('category_edit')).toList();
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,7 +496,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             ),
           ),
 
-          SizedBox(height: 16),
+          SizedBox(height: 8),
 
           Text(
               context.tr('current_categories'),
@@ -502,7 +506,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               )
           ),
 
-          SizedBox(height: 8),
+          SizedBox(height: 6),
 
           Expanded(
             child: Card(
@@ -514,32 +518,24 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: ReorderableListView.builder(
                   padding: EdgeInsets.zero,
-                  itemCount: selectedTab == 0
-                      ? viewModel.expenseCategories.length
-                      : viewModel.incomeCategories.length,
+                  itemCount: displayCategories.length,
                   itemBuilder: (context, index) {
-                    final category = selectedTab == 0
-                        ? viewModel.expenseCategories[index]
-                        : viewModel.incomeCategories[index];
-
-                    bool isEditCategory = category["label"] == context.tr('category_edit');
+                    final category = displayCategories[index];
 
                     return ListTile(
                       key: ValueKey(category["label"]),
                       leading: Icon(
                           category["icon"],
                           size: 30,
-                          color: isEditCategory ? Colors.grey : Colors.orange
+                          color: Colors.orange
                       ),
                       title: Text(
                         category["label"],
                         style: TextStyle(
-                          color: isEditCategory ? Colors.grey : Colors.black,
+                          color: Colors.black,
                         ),
                       ),
-                      trailing: isEditCategory
-                          ? null
-                          : Row(
+                      trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
@@ -547,7 +543,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 Icons.delete,
                                 color: Colors.red
                             ),
-                            onPressed: () => _deleteCategory(viewModel, index),
+                            onPressed: () {
+                              // Tìm chỉ mục thực tế trong danh sách gốc
+                              final originalList = selectedTab == 0
+                                  ? viewModel.expenseCategories
+                                  : viewModel.incomeCategories;
+
+                              int originalIndex = originalList.indexWhere(
+                                      (cat) => cat["label"] == category["label"]);
+
+                              if (originalIndex >= 0) {
+                                _deleteCategory(viewModel, originalIndex);
+                              }
+                            },
                           ),
                           ReorderableDragStartListener(
                             index: index,
@@ -561,11 +569,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     );
                   },
                   onReorder: (int oldIndex, int newIndex) {
-                    viewModel.reorderCategory(
-                        oldIndex,
-                        newIndex,
-                        selectedTab == 0
-                    );
+                    viewModel.reorderCategory(oldIndex, newIndex, selectedTab == 0);
                   },
                 ),
               ),

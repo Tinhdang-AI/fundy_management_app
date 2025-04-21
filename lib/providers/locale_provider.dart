@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
 
 class LocaleProvider extends ChangeNotifier {
-  Locale _locale = Locale('vi', 'VN');
+  Locale _locale;
+
+  // Update constructor to accept an initial locale
+  LocaleProvider({required Locale initialLocale}) : _locale = initialLocale;
 
   Locale get locale => _locale;
 

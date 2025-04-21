@@ -105,11 +105,28 @@ class _LoginScreenState extends State<LoginScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: Icon(Icons.language, color: Colors.white),
-            onPressed: () {
-              _showLanguageSelector(context);
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                _showLanguageSelector(context);
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.language, color: Colors.white, size: 24),
+                  SizedBox(height: 2),
+                  Text(
+                    context.tr('language'),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

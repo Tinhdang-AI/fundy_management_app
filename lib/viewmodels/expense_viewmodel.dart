@@ -39,41 +39,41 @@ class ExpenseViewModel extends ChangeNotifier {
   // Default categories with localization keys
   List<Map<String, dynamic>> _getDefaultExpenseCategories() {
     return [
-      {"icon": Icons.restaurant, "label": _tr('category_food')},
-      {"icon": Icons.shopping_bag, "label": _tr('category_shopping')},
-      {"icon": Icons.checkroom, "label": _tr('category_clothing')},
-      {"icon": Icons.spa, "label": _tr('category_cosmetics')},
-      {"icon": Icons.wine_bar, "label": _tr('category_entertainment')},
-      {"icon": Icons.local_hospital, "label": _tr('category_healthcare')},
-      {"icon": Icons.school, "label": _tr('category_education')},
-      {"icon": Icons.electrical_services, "label": _tr('category_electricity')},
-      {"icon": Icons.directions_bus, "label": _tr('category_transport')},
-      {"icon": Icons.phone, "label": _tr('category_communication')},
-      {"icon": Icons.home, "label": _tr('category_housing')},
-      {"icon": Icons.water_drop, "label": _tr('category_water')},
-      {"icon": Icons.local_gas_station, "label": _tr('category_fuel')},
-      {"icon": Icons.computer, "label": _tr('category_technology')},
-      {"icon": Icons.car_repair, "label": _tr('category_repair')},
-      {"icon": Icons.coffee, "label": _tr('category_coffee')},
-      {"icon": Icons.pets, "label": _tr('category_pets')},
-      {"icon": Icons.cleaning_services, "label": _tr('category_service')},
-      {"icon": Icons.build, "label": _tr('category_edit')},
+      {"icon": Icons.restaurant, "label": _tr('category_food'), "labelKey": "category_food"},
+      {"icon": Icons.shopping_bag, "label": _tr('category_shopping'), "labelKey": "category_shopping"},
+      {"icon": Icons.checkroom, "label": _tr('category_clothing'), "labelKey": "category_clothing"},
+      {"icon": Icons.spa, "label": _tr('category_cosmetics'), "labelKey": "category_cosmetics"},
+      {"icon": Icons.wine_bar, "label": _tr('category_entertainment'), "labelKey": "category_entertainment"},
+      {"icon": Icons.local_hospital, "label": _tr('category_healthcare'), "labelKey": "category_healthcare"},
+      {"icon": Icons.school, "label": _tr('category_education'), "labelKey": "category_education"},
+      {"icon": Icons.electrical_services, "label": _tr('category_electricity'), "labelKey": "category_electricity"},
+      {"icon": Icons.directions_bus, "label": _tr('category_transport'), "labelKey": "category_transport"},
+      {"icon": Icons.phone, "label": _tr('category_communication'), "labelKey": "category_communication"},
+      {"icon": Icons.home, "label": _tr('category_housing'), "labelKey": "category_housing"},
+      {"icon": Icons.water_drop, "label": _tr('category_water'), "labelKey": "category_water"},
+      {"icon": Icons.local_gas_station, "label": _tr('category_fuel'), "labelKey": "category_fuel"},
+      {"icon": Icons.computer, "label": _tr('category_technology'), "labelKey": "category_technology"},
+      {"icon": Icons.car_repair, "label": _tr('category_repair'), "labelKey": "category_repair"},
+      {"icon": Icons.coffee, "label": _tr('category_coffee'), "labelKey": "category_coffee"},
+      {"icon": Icons.pets, "label": _tr('category_pets'), "labelKey": "category_pets"},
+      {"icon": Icons.cleaning_services, "label": _tr('category_service'), "labelKey": "category_service"},
+      {"icon": Icons.build, "label": _tr('category_edit'), "labelKey": "category_edit"},
     ];
   }
 
   List<Map<String, dynamic>> _getDefaultIncomeCategories() {
     return [
-      {"icon": Icons.attach_money, "label": _tr('category_salary')},
-      {"icon": Icons.savings, "label": _tr('category_allowance')},
-      {"icon": Icons.card_giftcard, "label": _tr('category_bonus')},
-      {"icon": Icons.trending_up, "label": _tr('category_investment')},
-      {"icon": Icons.account_balance_wallet, "label": _tr('category_other_income')},
-      {"icon": Icons.work, "label": _tr('category_part_time')},
-      {"icon": Icons.corporate_fare, "label": _tr('category_commission')},
-      {"icon": Icons.real_estate_agent, "label": _tr('category_real_estate')},
-      {"icon": Icons.currency_exchange, "label": _tr('category_exchange')},
-      {"icon": Icons.dynamic_feed, "label": _tr('category_other')},
-      {"icon": Icons.build, "label": _tr('category_edit')},
+      {"icon": Icons.attach_money, "label": _tr('category_salary'), "labelKey": "category_salary"},
+      {"icon": Icons.savings, "label": _tr('category_allowance'), "labelKey": "category_allowance"},
+      {"icon": Icons.card_giftcard, "label": _tr('category_bonus'), "labelKey": "category_bonus"},
+      {"icon": Icons.trending_up, "label": _tr('category_investment'), "labelKey": "category_investment"},
+      {"icon": Icons.account_balance_wallet, "label": _tr('category_other_income'), "labelKey": "category_other_income"},
+      {"icon": Icons.work, "label": _tr('category_part_time'), "labelKey": "category_part_time"},
+      {"icon": Icons.corporate_fare, "label": _tr('category_commission'), "labelKey": "category_commission"},
+      {"icon": Icons.real_estate_agent, "label": _tr('category_real_estate'), "labelKey": "category_real_estate"},
+      {"icon": Icons.currency_exchange, "label": _tr('category_exchange'), "labelKey": "category_exchange"},
+      {"icon": Icons.dynamic_feed, "label": _tr('category_other'), "labelKey": "category_other"},
+      {"icon": Icons.build, "label": _tr('category_edit'), "labelKey": "category_edit"},
     ];
   }
 
@@ -175,8 +175,19 @@ class ExpenseViewModel extends ChangeNotifier {
             (userData['expenseCategories'] as List).isNotEmpty) {
           List<dynamic> loadedExpenseCategories = userData['expenseCategories'];
           List<Map<String, dynamic>> parsedExpenseCategories = loadedExpenseCategories.map((item) {
+            String label;
+            String labelKey = item["label"] ?? "";
+
+            // Check if this is a translation key (starts with "category_")
+            if (labelKey.startsWith("category_")) {
+              label = _tr(labelKey);
+            } else {
+              label = labelKey;
+            }
+
             return {
-              "label": item["label"],
+              "label": label,
+              "labelKey": labelKey, // Store the original key for saving
               "icon": IconData(item["iconCode"], fontFamily: item["fontFamily"] ?? 'MaterialIcons')
             };
           }).toList();
@@ -184,7 +195,11 @@ class ExpenseViewModel extends ChangeNotifier {
           // Ensure "Edit" category exists
           String editLabel = _tr('category_edit');
           if (!parsedExpenseCategories.any((element) => element["label"] == editLabel)) {
-            parsedExpenseCategories.add({"icon": Icons.build, "label": editLabel});
+            parsedExpenseCategories.add({
+              "icon": Icons.build,
+              "label": editLabel,
+              "labelKey": "category_edit"
+            });
           }
 
           _expenseCategories = parsedExpenseCategories;
@@ -197,8 +212,19 @@ class ExpenseViewModel extends ChangeNotifier {
             (userData['incomeCategories'] as List).isNotEmpty) {
           List<dynamic> loadedIncomeCategories = userData['incomeCategories'];
           List<Map<String, dynamic>> parsedIncomeCategories = loadedIncomeCategories.map((item) {
+            String label;
+            String labelKey = item["label"] ?? "";
+
+            // Check if this is a translation key (starts with "category_")
+            if (labelKey.startsWith("category_")) {
+              label = _tr(labelKey);
+            } else {
+              label = labelKey;
+            }
+
             return {
-              "label": item["label"],
+              "label": label,
+              "labelKey": labelKey, // Store the original key for saving
               "icon": IconData(item["iconCode"], fontFamily: item["fontFamily"] ?? 'MaterialIcons')
             };
           }).toList();
@@ -206,7 +232,11 @@ class ExpenseViewModel extends ChangeNotifier {
           // Ensure "Edit" category exists
           String editLabel = _tr('category_edit');
           if (!parsedIncomeCategories.any((element) => element["label"] == editLabel)) {
-            parsedIncomeCategories.add({"icon": Icons.build, "label": editLabel});
+            parsedIncomeCategories.add({
+              "icon": Icons.build,
+              "label": editLabel,
+              "labelKey": "category_edit"
+            });
           }
 
           _incomeCategories = parsedIncomeCategories;
@@ -250,7 +280,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert expense categories to serializable format
       List<Map<String, dynamic>> serializableExpenseCategories = defaultExpenseCategories.map((category) {
         return {
-          "label": category["label"],
+          "label": category["labelKey"] ?? category["label"], // Store the key, not the translated value
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -259,7 +289,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert income categories to serializable format
       List<Map<String, dynamic>> serializableIncomeCategories = defaultIncomeCategories.map((category) {
         return {
-          "label": category["label"],
+          "label": category["labelKey"] ?? category["label"], // Store the key, not the translated value
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -315,14 +345,19 @@ class ExpenseViewModel extends ChangeNotifier {
       // Remove "Edit" entry to add it last
       targetList.removeWhere((element) => element["label"] == editLabel);
 
-      // Add new category
+      // Add new category - this is a custom category, not using a translation key
       targetList.add({
         "icon": icon,
         "label": name,
+        "labelKey": name,  // For custom categories, key is the same as label
       });
 
       // Add "Edit" entry back
-      targetList.add({"icon": Icons.build, "label": editLabel});
+      targetList.add({
+        "icon": Icons.build,
+        "label": editLabel,
+        "labelKey": "category_edit"
+      });
 
       if (isExpense) {
         _expenseCategories = targetList;
@@ -376,32 +411,34 @@ class ExpenseViewModel extends ChangeNotifier {
   // Reorder category method
   Future<bool> reorderCategory(int oldIndex, int newIndex, bool isExpense) async {
     try {
-      // Choose the correct list based on transaction type
+      // Chọn danh sách đúng
       List<Map<String, dynamic>> targetList = isExpense ? _expenseCategories : _incomeCategories;
 
-      // Prevent reordering the "Edit" category
-      if (oldIndex == targetList.length - 1 || newIndex == targetList.length - 1) {
-        return false;
+      // Tách category_edit nếu có
+      final editIndex = targetList.indexWhere((cat) => cat["label"] == _tr('category_edit'));
+      Map<String, dynamic>? editCategory;
+      if (editIndex != -1) {
+        editCategory = targetList.removeAt(editIndex);
       }
 
-      // Remove the item from the old index
-      final Map<String, dynamic> movedCategory = targetList.removeAt(oldIndex);
-
-      // Insert the item at the new index
-      // Adjust newIndex if it's after the removed item
-      if (newIndex > oldIndex) {
-        newIndex -= 1;
-      }
+      // Xử lý di chuyển bình thường
+      final movedCategory = targetList.removeAt(oldIndex);
+      if (newIndex > oldIndex) newIndex -= 1;
       targetList.insert(newIndex, movedCategory);
 
-      // Update the respective list
+      // Đảm bảo "category_edit" luôn ở cuối
+      if (editCategory != null) {
+        targetList.add(editCategory);
+      }
+
+      // Gán lại danh sách
       if (isExpense) {
         _expenseCategories = targetList;
       } else {
         _incomeCategories = targetList;
       }
 
-      // Save changes to Firebase
+      // Lưu và cập nhật
       await _saveCategoriesToFirebase();
       notifyListeners();
       return true;
@@ -412,6 +449,8 @@ class ExpenseViewModel extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
+
 
   // Save categories to Firebase
   Future<void> _saveCategoriesToFirebase() async {
@@ -429,7 +468,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert expense categories to serializable format
       List<Map<String, dynamic>> serializableExpenseCategories = _expenseCategories.map((category) {
         return {
-          "label": category["label"],
+          "label": category["labelKey"] ?? category["label"], // Use the labelKey if available
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -438,7 +477,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert income categories to serializable format
       List<Map<String, dynamic>> serializableIncomeCategories = _incomeCategories.map((category) {
         return {
-          "label": category["label"],
+          "label": category["labelKey"] ?? category["label"], // Use the labelKey if available
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -511,8 +550,20 @@ class ExpenseViewModel extends ChangeNotifier {
         return {
           "icon": Icons.build,
           "label": editLabel,
+          "labelKey": "category_edit"
         };
       }
+
+      // Update translated label for default categories
+      String labelKey = category["labelKey"] ?? "";
+      if (labelKey.startsWith("category_")) {
+        return {
+          "icon": category["icon"],
+          "label": _tr(labelKey),
+          "labelKey": labelKey
+        };
+      }
+
       return category;
     }).toList();
 
@@ -521,8 +572,20 @@ class ExpenseViewModel extends ChangeNotifier {
         return {
           "icon": Icons.build,
           "label": editLabel,
+          "labelKey": "category_edit"
         };
       }
+
+      // Update translated label for default categories
+      String labelKey = category["labelKey"] ?? "";
+      if (labelKey.startsWith("category_")) {
+        return {
+          "icon": category["icon"],
+          "label": _tr(labelKey),
+          "labelKey": labelKey
+        };
+      }
+
       return category;
     }).toList();
 

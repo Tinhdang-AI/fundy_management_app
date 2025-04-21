@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
 import '../utils/transaction_utils.dart';
+import '../localization/app_localizations.dart';
 
 class ReportViewModel extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
+
+  BuildContext? _context;
+  AppLocalizations? _l10n;
 
   bool _isLoading = false;
   bool _isMonthly = true; // Toggle between monthly and yearly view
@@ -48,7 +52,7 @@ class ReportViewModel extends ChangeNotifier {
     Colors.lime.shade400,
   ];
 
-  // Getters (remain the same as in the previous implementation)
+  // Getters
   bool get isLoading => _isLoading;
   bool get isMonthly => _isMonthly;
   bool get hasNoData => _hasNoData;
@@ -68,6 +72,27 @@ class ReportViewModel extends ChangeNotifier {
   int get tabIndex => _tabIndex;
   List<Color> get colors => _colors;
 
+  // Set context for localization
+  void setContext(BuildContext context) {
+    _context = context;
+    _l10n = AppLocalizations.of(context);
+  }
+
+  // String translations helper
+  String tr(String key, [List<String>? args]) {
+    if (_l10n == null) return key;
+
+    String text = _l10n!.translate(key);
+
+    if (args != null && args.isNotEmpty) {
+      for (int i = 0; i < args.length; i++) {
+        text = text.replaceAll('{$i}', args[i]);
+      }
+    }
+
+    return text;
+  }
+
   // Initialize
   Future<void> initialize() async {
     await checkForData();
@@ -86,7 +111,7 @@ class ReportViewModel extends ChangeNotifier {
         await loadReportData();
       }
     } catch (e) {
-      _setError("Error checking for data: ${e.toString()}");
+      _setError(tr('error_load_report', [e.toString()]));
       await loadReportData(); // Try loading data anyway
     } finally {
       _setLoading(false);
@@ -120,7 +145,7 @@ class ReportViewModel extends ChangeNotifier {
         await _loadYearlyData();
       }
     } catch (e) {
-      _setError("Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.");
+      _setError(tr('error_load_report', [e.toString()]));
     } finally {
       _setLoading(false);
     }
@@ -142,7 +167,7 @@ class ReportViewModel extends ChangeNotifier {
 
       _hasNoData = transactions.isEmpty;
     } catch (e) {
-      _setError("Lỗi tải dữ liệu tháng: ${e.toString()}");
+      _setError(tr('error_load_monthly', [e.toString()]));
     }
   }
 
@@ -161,7 +186,7 @@ class ReportViewModel extends ChangeNotifier {
 
       _hasNoData = yearlyTransactions.isEmpty;
     } catch (e) {
-      _setError("Lỗi tải dữ liệu năm: ${e.toString()}");
+      _setError(tr('error_load_yearly', [e.toString()]));
     }
   }
 
@@ -294,7 +319,7 @@ class ReportViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      _setError("Lỗi cập nhật giao dịch: ${e.toString()}");
+      _setError(tr('update_error'));
       return false;
     } finally {
       _setLoading(false);
@@ -335,7 +360,7 @@ class ReportViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      _setError("Lỗi xóa giao dịch: ${e.toString()}");
+      _setError(tr('delete_error'));
       return false;
     } finally {
       _setLoading(false);

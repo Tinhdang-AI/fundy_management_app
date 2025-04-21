@@ -31,11 +31,18 @@ void main() async {
   // Initialize currency settings
   await initCurrency();
 
-  // Run the application
-  runApp(FundyApp());
+  // Load the saved locale before running the app
+  final savedLocale = await AppLocalizations.getLocale();
+
+  // Run the application with the saved locale
+  runApp(FundyApp(initialLocale: savedLocale));
 }
 
 class FundyApp extends StatefulWidget {
+  final Locale initialLocale;
+
+  const FundyApp({Key? key, required this.initialLocale}) : super(key: key);
+
   @override
   _FundyAppState createState() => _FundyAppState();
 }
@@ -52,8 +59,8 @@ class _FundyAppState extends State<FundyApp> {
         ChangeNotifierProvider(create: (_) => ReportViewModel()),
         ChangeNotifierProvider(create: (_) => SearchViewModel()),
         ChangeNotifierProvider(create: (_) => MoreViewModel()),
-        // Thêm LocaleProvider cho hỗ trợ đa ngôn ngữ
-        ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProvider(
+            create: (_) => LocaleProvider(initialLocale: widget.initialLocale)),
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProvider, child) {
@@ -66,7 +73,9 @@ class _FundyAppState extends State<FundyApp> {
               appBarTheme: AppBarTheme(
                 backgroundColor: Colors.white,
                 iconTheme: IconThemeData(color: Colors.black),
-                titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+                titleTextStyle: TextStyle(color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
                 elevation: 0,
               ),
               cardTheme: CardTheme(
@@ -104,14 +113,5 @@ class _FundyAppState extends State<FundyApp> {
         },
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
-      localeProvider.loadSavedLocale();
-    });
   }
 }

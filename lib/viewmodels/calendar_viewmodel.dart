@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import '../models/expense_model.dart';
 import '../services/database_service.dart';
 import '../utils/transaction_utils.dart';
+import '../localization/app_localizations.dart';
 
 class CalendarViewModel extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
+
+  BuildContext? _context;
+  AppLocalizations? _l10n;
 
   bool _isLoading = false;
   bool _showDateSelector = false;
@@ -30,6 +34,27 @@ class CalendarViewModel extends ChangeNotifier {
   double get incomeTotal => _incomeTotal;
   double get expenseTotal => _expenseTotal;
   double get netTotal => _netTotal;
+
+  // Set context for localization
+  void setContext(BuildContext context) {
+    _context = context;
+    _l10n = AppLocalizations.of(context);
+  }
+
+  // String translations helper
+  String tr(String key, [List<String>? args]) {
+    if (_l10n == null) return key;
+
+    String text = _l10n!.translate(key);
+
+    if (args != null && args.isNotEmpty) {
+      for (int i = 0; i < args.length; i++) {
+        text = text.replaceAll('{$i}', args[i]);
+      }
+    }
+
+    return text;
+  }
 
   // Initialize with current date data
   Future<void> initialize() async {
@@ -66,7 +91,7 @@ class CalendarViewModel extends ChangeNotifier {
       _eventsByDay = eventsMap;
       notifyListeners();
     } catch (e) {
-      _setError("Lỗi tải dữ liệu tháng: ${e.toString()}");
+      _setError(tr('error_load_monthly', [e.toString()]));
     } finally {
       _setLoading(false);
     }
@@ -88,7 +113,7 @@ class CalendarViewModel extends ChangeNotifier {
       _calculateTotals();
       notifyListeners();
     } catch (e) {
-      _setError("Lỗi tải dữ liệu ngày: ${e.toString()}");
+      _setError(tr('error_load_report', [e.toString()]));
     } finally {
       _setLoading(false);
     }
@@ -191,7 +216,7 @@ class CalendarViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      _setError("Lỗi cập nhật giao dịch: ${e.toString()}");
+      _setError(tr('update_error'));
       return false;
     } finally {
       _setLoading(false);
@@ -220,7 +245,7 @@ class CalendarViewModel extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      _setError("Lỗi xóa giao dịch: ${e.toString()}");
+      _setError(tr('delete_error'));
       return false;
     } finally {
       _setLoading(false);
