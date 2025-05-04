@@ -542,18 +542,9 @@ class ExpenseViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void refreshEditCategoryLabels() {
-    String editLabel = _tr('category_edit');
+  void refreshCategoryLabels() {
 
     _expenseCategories = _expenseCategories.map((category) {
-      if (category['icon'] == Icons.build) {
-        return {
-          "icon": Icons.build,
-          "label": editLabel,
-          "labelKey": "category_edit"
-        };
-      }
-
       // Update translated label for default categories
       String labelKey = category["labelKey"] ?? "";
       if (labelKey.startsWith("category_")) {
@@ -563,19 +554,10 @@ class ExpenseViewModel extends ChangeNotifier {
           "labelKey": labelKey
         };
       }
-
       return category;
     }).toList();
 
     _incomeCategories = _incomeCategories.map((category) {
-      if (category['icon'] == Icons.build) {
-        return {
-          "icon": Icons.build,
-          "label": editLabel,
-          "labelKey": "category_edit"
-        };
-      }
-
       // Update translated label for default categories
       String labelKey = category["labelKey"] ?? "";
       if (labelKey.startsWith("category_")) {

@@ -21,6 +21,8 @@ class ReportViewModel extends ChangeNotifier {
   List<ExpenseModel> _incomes = [];
   Map<String, double> _expenseCategoryTotals = {};
   Map<String, double> _incomeCategoryTotals = {};
+  Map<String, String> _expenseCategoryOriginalKeys = {};
+  Map<String, String> _incomeCategoryOriginalKeys = {};
 
   // Category details state
   String? _selectedCategory;
@@ -62,6 +64,8 @@ class ReportViewModel extends ChangeNotifier {
   List<ExpenseModel> get incomes => _incomes;
   Map<String, double> get expenseCategoryTotals => _expenseCategoryTotals;
   Map<String, double> get incomeCategoryTotals => _incomeCategoryTotals;
+  Map<String, String> get expenseCategoryOriginalKeys => _expenseCategoryOriginalKeys;
+  Map<String, String> get incomeCategoryOriginalKeys => _incomeCategoryOriginalKeys;
   String? get selectedCategory => _selectedCategory;
   bool get showingCategoryDetails => _showingCategoryDetails;
   bool get isCategoryExpense => _isCategoryExpense;
@@ -227,34 +231,57 @@ class ReportViewModel extends ChangeNotifier {
     _netTotal = _incomeTotal - _expenseTotal;
   }
 
-  // Generate category totals
+  // Hàm hỗ trợ dịch tên danh mục
+  String translateCategoryName(String category) {
+    if (category.startsWith('category_')) {
+      return tr(category);
+    }
+    return category;
+  }
+
+// Sửa phương thức _generateCategoryTotals()
   void _generateCategoryTotals() {
     // Generate expense category totals
     Map<String, double> expenseTotals = {};
+    Map<String, String> expenseCategoryKeys = {}; // Lưu trữ khóa gốc
+
     for (var item in _expenses) {
-      expenseTotals[item.category] = (expenseTotals[item.category] ?? 0) + item.amount;
+      String displayName = translateCategoryName(item.category);
+      expenseTotals[displayName] = (expenseTotals[displayName] ?? 0) + item.amount;
+      expenseCategoryKeys[displayName] = item.category; // Lưu khóa gốc
     }
     _expenseCategoryTotals = expenseTotals;
+    _expenseCategoryOriginalKeys = expenseCategoryKeys; // Lưu khóa gốc
 
     // Generate income category totals
     Map<String, double> incomeTotals = {};
+    Map<String, String> incomeCategoryKeys = {}; // Lưu trữ khóa gốc
+
     for (var item in _incomes) {
-      incomeTotals[item.category] = (incomeTotals[item.category] ?? 0) + item.amount;
+      String displayName = translateCategoryName(item.category);
+      incomeTotals[displayName] = (incomeTotals[displayName] ?? 0) + item.amount;
+      incomeCategoryKeys[displayName] = item.category; // Lưu khóa gốc
     }
     _incomeCategoryTotals = incomeTotals;
+    _incomeCategoryOriginalKeys = incomeCategoryKeys; // Lưu khóa gốc
   }
 
   // Show category details
-  void showCategoryDetails(String category, bool isExpense) {
-    _selectedCategory = category;
+  void showCategoryDetails(String categoryDisplayName, bool isExpense) {
+    _selectedCategory = categoryDisplayName;
     _isCategoryExpense = isExpense;
 
-    // Filter transactions by selected category
-    _categoryTransactions = isExpense
-        ? _expenses.where((expense) => expense.category == category).toList()
-        : _incomes.where((income) => income.category == category).toList();
+    // Lấy khóa gốc từ tên hiển thị
+    String originalCategoryKey = isExpense
+        ? _expenseCategoryOriginalKeys[categoryDisplayName] ?? categoryDisplayName
+        : _incomeCategoryOriginalKeys[categoryDisplayName] ?? categoryDisplayName;
 
-    // Sort by date (newest first)
+    // Lọc các giao dịch theo danh mục đã chọn (sử dụng khóa gốc)
+    _categoryTransactions = isExpense
+        ? _expenses.where((expense) => expense.category == originalCategoryKey).toList()
+        : _incomes.where((income) => income.category == originalCategoryKey).toList();
+
+    // Sắp xếp theo ngày (mới nhất trước)
     _categoryTransactions.sort((a, b) => b.date.compareTo(a.date));
 
     _showingCategoryDetails = true;

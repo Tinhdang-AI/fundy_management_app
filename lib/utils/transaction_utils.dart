@@ -323,10 +323,9 @@ class TransactionUtils {
       String currentCategory,
       Function(String, String) onCategorySelected) {
 
-    // Filter categories by type (expense/income) AND remove "Edit" category
     final filteredCategories = categoryList.where((category) =>
     category['isExpense'] == isExpense &&
-        category['name'] != context.tr('category_edit')  // Remove "Edit" category
+        category['name'] != context.tr('category_edit')
     ).toList();
 
     showDialog(
@@ -347,19 +346,26 @@ class TransactionUtils {
               itemCount: filteredCategories.length,
               itemBuilder: (context, index) {
                 final category = filteredCategories[index];
-                final isSelected = category['name'] == currentCategory;
+                final categoryName = category['name'];
+                String displayName = categoryName;
+
+                if (categoryName.startsWith('category_')) {
+                  displayName = context.tr(categoryName);
+                }
+
+                final isSelected = displayName == currentCategory;
 
                 return ListTile(
                   leading: Icon(
                     IconData(int.parse(category['icon']), fontFamily: 'MaterialIcons'),
                     color: Colors.orange,
                   ),
-                  title: Text(category['name'], style: TextStyle(color: Colors.black)),
+                  title: Text(displayName, style: TextStyle(color: Colors.black)),
                   selected: isSelected,
                   selectedTileColor: Colors.orange.shade50,
                   trailing: isSelected ? Icon(Icons.check, color: Colors.green) : null,
                   onTap: () {
-                    onCategorySelected(category['name'], category['icon']);
+                    onCategorySelected(displayName, category['icon']);
                     Navigator.pop(context);
                   },
                 );
@@ -377,12 +383,16 @@ class TransactionUtils {
     );
   }
 
-  // Show delete confirmation dialog
   static Future<bool?> showDeleteConfirmation(
       BuildContext context,
       ExpenseModel expense) {
     String type = expense.isExpense ? context.tr('expense').toLowerCase() : context.tr('income').toLowerCase();
     String formattedAmount = formatCurrencyWithSymbol(expense.amount);
+
+    String category = expense.category;
+    if (category.startsWith('category_')) {
+      category = context.tr(category);
+    }
 
     return showDialog<bool>(
       context: context,
@@ -391,7 +401,7 @@ class TransactionUtils {
         backgroundColor: Colors.white,
         content: Text(
             context.tr('confirm_delete_transaction') + ' ' +
-                type + ' "${expense.note}" ' +
+                type + ' "${category}" ' +
                 context.tr('with_amount') + ' ' + formattedAmount + '?'
         ),
         actions: [

@@ -52,6 +52,7 @@ const Map<String, String> languageVi = {
   'select_icon': 'Chọn biểu tượng',
   'add_category_success': 'Đã thêm danh mục mới thành công',
   'confirm_delete_category': 'Bạn có chắc chắn muốn xóa danh mục này không?',
+  'with_amount': 'với số tiền',
   'delete_category_success': 'Đã xóa danh mục thành công',
   'select_icon_please': 'Vui lòng chọn biểu tượng!',
 

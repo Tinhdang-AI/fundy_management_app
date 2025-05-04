@@ -31,7 +31,7 @@ class AppBottomNavigationBar extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           currentIndex: currentIndex,
-          selectedItemColor: Colors.deepOrange,
+          selectedItemColor: Color(0xFFFF8B55),
           unselectedItemColor: Colors.grey.shade500,
           showUnselectedLabels: true,
           onTap: (index) {
@@ -64,7 +64,7 @@ class AppBottomNavigationBar extends StatelessWidget {
         padding: EdgeInsets.all(isActive ? 8 : 0),
         decoration: isActive
             ? BoxDecoration(
-          color: Colors.deepOrange.withOpacity(0.1),
+          color: Color(0xFFFF8B55).withOpacity(0.1),
           shape: BoxShape.circle,
         )
             : null,

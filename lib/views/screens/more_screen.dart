@@ -40,6 +40,7 @@ class _MoreScreenState extends State<MoreScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: Colors.black),
@@ -90,7 +91,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Widget _buildUserHeader(MoreViewModel viewModel) {
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, 5, 20, 20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [

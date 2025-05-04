@@ -27,7 +27,7 @@ class CustomDatePicker extends StatelessWidget {
     this.showMonthInfo = false,
     this.backgroundColor,
     this.textColor,
-    this.arrowColor = Colors.orange,
+    this.arrowColor = const Color(0xFFFF8B55),
     this.showBorder = true,
   }) : super(key: key);
 
@@ -122,7 +122,7 @@ class CustomDatePicker extends StatelessWidget {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: Colors.orange, // Header background color
+              primary: Color(0xFFFF8B55), // Header background color
               onPrimary: Colors.white, // Header text color
               onSurface: Colors.black, // Calendar text color
             ),

@@ -85,7 +85,7 @@ class LanguageSelector extends StatelessWidget {
                     Future.delayed(Duration(milliseconds: 100), () {
                       final expenseViewModel = Provider.of<ExpenseViewModel>(context, listen: false);
                       expenseViewModel.setContext(context);
-                      expenseViewModel.refreshEditCategoryLabels();
+                      expenseViewModel.refreshCategoryLabels();
                     });
 
                     Navigator.pop(context);

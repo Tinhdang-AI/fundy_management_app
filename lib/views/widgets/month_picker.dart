@@ -133,12 +133,12 @@ class _MonthPickerState extends State<MonthPicker> {
                             margin: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: _tempFocusedDate.month == index + 1
-                                  ? Colors.orange
+                                  ? Color(0xFFFF8B55)
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: _tempFocusedDate.month == index + 1
-                                    ? Colors.orange
+                                    ? Color(0xFFFF8B55)
                                     : Colors.grey.shade300,
                               ),
                             ),
@@ -178,7 +178,7 @@ class _MonthPickerState extends State<MonthPicker> {
                             Navigator.of(context).pop();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor: Color(0xFFFF8B55),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -264,7 +264,7 @@ class _MonthPickerState extends State<MonthPicker> {
                                   ? FontWeight.bold
                                   : FontWeight.normal,
                               color: initialYear == year
-                                  ? Colors.orange
+                                  ? Color(0xFFFF8B55)
                                   : Colors.black87,
                               fontSize: 16,
                             ),
@@ -282,7 +282,7 @@ class _MonthPickerState extends State<MonthPicker> {
                     child: ElevatedButton(
                       onPressed: () => overlayEntry.remove(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+                        backgroundColor: Color(0xFFFF8B55),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -310,7 +310,7 @@ class _MonthPickerState extends State<MonthPicker> {
 
     return Container(
         decoration: BoxDecoration(
-        color: const Color(0xFFFFA07A),
+        color: const Color(0xFFFF8B55),
         ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

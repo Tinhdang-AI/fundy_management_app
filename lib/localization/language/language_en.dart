@@ -52,6 +52,7 @@ const Map<String, String> languageEn = {
   'select_icon': 'Select icon',
   'add_category_success': 'New category added successfully',
   'confirm_delete_category': 'Are you sure you want to delete this category?',
+  'with_amount': 'with amount',
   'delete_category_success': 'Category deleted successfully',
   'select_icon_please': 'Please select an icon!',
 

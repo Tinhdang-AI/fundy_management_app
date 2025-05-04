@@ -196,42 +196,6 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildMonthSelector(ReportViewModel viewModel) {
-    String timeDisplay;
-
-    if (viewModel.isMonthly) {
-      // Format first and last day of month
-      DateTime firstDay = DateTime(viewModel.selectedDate.year, viewModel.selectedDate.month, 1);
-      DateTime lastDay = DateTime(viewModel.selectedDate.year, viewModel.selectedDate.month + 1, 0);
-      timeDisplay = "${DateFormat('MM/yyyy').format(viewModel.selectedDate)} (${DateFormat('dd/MM').format(firstDay)} - ${DateFormat('dd/MM').format(lastDay)})";
-    } else {
-      timeDisplay = "${DateFormat('yyyy').format(viewModel.selectedDate)}";
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Color(0xFFFFA07A),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-            onPressed: () => viewModel.updateTimeRange(false),
-          ),
-          Text(
-            timeDisplay,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          IconButton(
-            icon: Icon(Icons.arrow_forward_ios, color: Colors.white),
-            onPressed: () => viewModel.updateTimeRange(true),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSummaryBox(ReportViewModel viewModel) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16, horizontal: 15),
@@ -357,12 +321,22 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
     return TabBar(
       controller: _tabController,
       tabs: [
-        Tab(text: context.tr('expense')),
-        Tab(text: context.tr('income')),
+        Tab(
+          child: Text(
+            context.tr('expense'),
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        Tab(
+          child: Text(
+          context.tr('income'),
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        ),
       ],
-      labelColor: Colors.orange,
+      labelColor: Color(0xFFFF8B55),
       unselectedLabelColor: Colors.black54,
-      indicatorColor: Colors.orange,
+      indicatorColor: Color(0xFFFF8B55),
     );
   }
 
@@ -420,6 +394,10 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               final percentage = (totalAmount > 0)
                   ? (category.value / totalAmount * 100)
                   : 0;
+              String displayName = category.key;
+              if (displayName.startsWith('category_')) {
+                displayName = context.tr(displayName);
+              }
 
               return ListTile(
                 leading: Container(
@@ -430,8 +408,9 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                     shape: BoxShape.circle,
                   ),
                 ),
+
                 title: Text(
-                  category.key,
+                  displayName,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Row(
@@ -508,6 +487,10 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               final percentage = (totalAmount > 0)
                   ? (category.value / totalAmount * 100)
                   : 0;
+              String displayName = category.key;
+              if (displayName.startsWith('category_')) {
+                displayName = context.tr(displayName);
+              }
 
               return ListTile(
                 leading: Container(
@@ -519,7 +502,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                   ),
                 ),
                 title: Text(
-                  category.key,
+                  displayName,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Row(
@@ -610,6 +593,11 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
         ? '${context.tr('month_' + viewModel.selectedDate.month.toString())} ${viewModel.selectedDate.year}'
         : '${context.tr('year')} ${viewModel.selectedDate.year}';
 
+    String displayCategoryName = viewModel.selectedCategory ?? '';
+    if (displayCategoryName.startsWith('category_')) {
+      displayCategoryName = context.tr(displayCategoryName);
+    }
+
     return Column(
       children: [
         // Header with back button
@@ -627,7 +615,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
               SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  '${viewModel.selectedCategory}',
+                  displayCategoryName,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

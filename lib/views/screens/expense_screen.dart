@@ -62,6 +62,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         title: _buildToggleTab(),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: Colors.black),
@@ -72,7 +73,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         ],
       ),
       body: expenseViewModel.isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.orange))
+          ? Center(child: CircularProgressIndicator(color: Color(0xFFFF8B55)))
           : Padding(
         padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
         child: Column(
@@ -107,7 +108,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         ),
       ),
       floatingActionButton: expenseViewModel.isEditMode ? FloatingActionButton(
-        backgroundColor: Colors.orange,
+        backgroundColor: Color(0xFFFF8B55),
         child: Icon(Icons.check, color: Colors.white),
         onPressed: () {
           expenseViewModel.toggleEditMode();
@@ -379,6 +380,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected || isEditButton ? Color(0xFFFF8B55) : Colors.black87,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -460,10 +463,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                             child: selectedIconForNewCategory != null
                                 ? Icon(selectedIconForNewCategory,
                                 size: 32,
-                                color: Colors.orange)
+                                color: Color(0xFFFF8B55))
                                 : Icon(Icons.add_circle_outline,
                                 size: 32,
-                                color: Colors.orange),
+                                color: Color(0xFFFF8B55)),
                           ),
                         ),
                       ),
@@ -472,7 +475,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       ElevatedButton(
                         onPressed: () => _addNewCategory(viewModel),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
+                          backgroundColor: Color(0xFFFF8B55),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),

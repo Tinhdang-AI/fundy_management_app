@@ -43,6 +43,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: Colors.black),
@@ -272,7 +273,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Text(
           text,
           style: TextStyle(
-            color: isWeekend ? Colors.red : Colors.white,
+            color: isWeekend ? Colors.white : Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),

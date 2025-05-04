@@ -74,7 +74,7 @@ class DatabaseService {
     }
 
     try {
-      // Lấy document của user
+      // Lấy tài liệu người dùng
       DocumentSnapshot userDoc = await usersCollection.doc(currentUserId).get();
 
       if (!userDoc.exists) {
@@ -87,8 +87,11 @@ class DatabaseService {
       List<Map<String, dynamic>> expenseCategories = [];
       if (userData.containsKey('expenseCategories')) {
         for (var category in userData['expenseCategories']) {
+          String label = category['label'] ?? '';
+
           expenseCategories.add({
-            'name': category['label'],
+            'name': label,
+            'originalKey': label,
             'icon': category['iconCode'].toString(),
             'isExpense': true
           });
@@ -99,8 +102,11 @@ class DatabaseService {
       List<Map<String, dynamic>> incomeCategories = [];
       if (userData.containsKey('incomeCategories')) {
         for (var category in userData['incomeCategories']) {
+          String label = category['label'] ?? '';
+
           incomeCategories.add({
-            'name': category['label'],
+            'name': label,
+            'originalKey': label,
             'icon': category['iconCode'].toString(),
             'isExpense': false
           });
@@ -110,7 +116,7 @@ class DatabaseService {
       // Kết hợp hai danh sách
       return [...expenseCategories, ...incomeCategories];
     } catch (e) {
-      print("Error getting categories: $e");
+      print("Lỗi khi lấy danh mục: $e");
       return [];
     }
   }

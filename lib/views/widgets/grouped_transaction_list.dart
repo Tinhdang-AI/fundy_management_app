@@ -64,6 +64,8 @@ class GroupedTransactionList extends StatelessWidget {
                 final transaction = dayTransactions[index];
                 final bool hasNote = transaction.note.trim().isNotEmpty;
 
+                final String displayCategory = _getDisplayCategory(context, transaction.category);
+
                 return Material(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -98,7 +100,7 @@ class GroupedTransactionList extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  transaction.category,
+                                  displayCategory,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -136,6 +138,13 @@ class GroupedTransactionList extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _getDisplayCategory(BuildContext context, String category) {
+    if (category.startsWith("category_")) {
+      return context.tr(category);
+    }
+    return category;
   }
 
   // Format date based on the current locale

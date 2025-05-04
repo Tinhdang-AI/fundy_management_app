@@ -25,7 +25,13 @@ class TransactionHelper {
     );
   }
 
-  /// Internal method to handle transaction editing
+  static String translateCategoryIfNeeded(BuildContext context, String categoryName) {
+    if (categoryName.startsWith('category_')) {
+      return context.tr(categoryName);
+    }
+    return categoryName;
+  }
+
   static Future<void> _editTransaction<T>(
       BuildContext context,
       ExpenseModel expense,
@@ -33,24 +39,48 @@ class TransactionHelper {
       Future<void> Function(ExpenseModel)? onEditSuccess,
       ) async {
     try {
-      // Get categories from view model
+      // Lấy danh mục từ viewModel
       final categoryList = await _getCategoriesFromViewModel(viewModel);
 
-      // Show edit dialog
+      // Tạo phiên bản cập nhật của expense với tên danh mục đã dịch để hiển thị
+      final displayExpense = expense.copyWith(
+          category: translateCategoryIfNeeded(context, expense.category)
+      );
+
+      // Hiển thị hộp thoại chỉnh sửa
       final result = await TransactionUtils.showEditDialog(
         context,
-        expense,
+        displayExpense,
         categoryList,
       );
 
       if (result != null && result.updated) {
-        // Create updated expense
+        // Xác định xem có nên giữ lại khóa gốc nếu đây là một danh mục hệ thống
+        String updatedCategory = result.category;
+        String categoryIcon = result.categoryIcon;
+
+        // Tìm danh mục gốc từ danh sách
+        for (var category in categoryList) {
+          // Kiểm tra nếu đây là danh mục được chọn
+          String catName = category['name'] ?? '';
+          String displayName = catName.startsWith('category_')
+              ? context.tr(catName)
+              : catName;
+
+          if (displayName == result.category) {
+            // Nếu tìm thấy, sử dụng tên khóa gốc thay vì tên hiển thị
+            updatedCategory = catName;
+            break;
+          }
+        }
+
+        // Tạo expense đã cập nhật
         final updatedExpense = expense.copyWith(
           note: result.note,
           amount: result.amount,
           date: result.date,
-          category: result.category,
-          categoryIcon: result.categoryIcon,
+          category: updatedCategory,
+          categoryIcon: categoryIcon,
         );
 
         final success = await _updateTransactionInViewModel(viewModel, updatedExpense);
@@ -60,24 +90,14 @@ class TransactionHelper {
           await Future.delayed(Duration(milliseconds: 300));
 
           if (context.mounted) {
-            // Get the current ScaffoldMessenger and make sure it's valid
-            final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-            // Clear all displayed SnackBars
-            scaffoldMessenger.clearSnackBars();
-
-            // Display success message with longer duration
             String type = updatedExpense.isExpense
                 ? context.tr('expense')
                 : context.tr('income');
 
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(context.tr('transaction_updated', [type])),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
+            // Use MessageUtils instead of ScaffoldMessenger
+            MessageUtils.showSuccessMessage(
+                context,
+                context.tr('transaction_updated', [type])
             );
           }
 
@@ -88,13 +108,10 @@ class TransactionHelper {
         } else {
           // Display error message if update fails
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.tr('update_error')),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
+            // Use MessageUtils instead of ScaffoldMessenger
+            MessageUtils.showErrorMessage(
+                context,
+                context.tr('update_error')
             );
           }
         }
@@ -102,13 +119,10 @@ class TransactionHelper {
     } catch (e) {
       print("Error editing transaction: $e");
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("${context.tr('error')}: ${e.toString()}"),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
+        // Use MessageUtils instead of ScaffoldMessenger
+        MessageUtils.showErrorMessage(
+            context,
+            "${context.tr('error')}: ${e.toString()}"
         );
       }
     }
@@ -134,24 +148,14 @@ class TransactionHelper {
 
           // Display success message
           if (context.mounted) {
-            // Get current ScaffoldMessenger and ensure it's valid
-            final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-            // Clear all displayed SnackBars
-            scaffoldMessenger.clearSnackBars();
-
             String type = expense.isExpense
                 ? context.tr('expense')
                 : context.tr('income');
 
-            // Display success message with longer duration
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(context.tr('transaction_deleted', [type])),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
+            // Use MessageUtils instead of ScaffoldMessenger
+            MessageUtils.showSuccessMessage(
+                context,
+                context.tr('transaction_deleted', [type])
             );
           }
 
@@ -162,26 +166,20 @@ class TransactionHelper {
         } else {
           // Display error message if deletion fails
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(context.tr('delete_error')),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
+            // Use MessageUtils instead of ScaffoldMessenger
+            MessageUtils.showErrorMessage(
+                context,
+                context.tr('delete_error')
             );
           }
         }
       } catch (e) {
         print("Error deleting transaction: $e");
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("${context.tr('error')}: ${e.toString()}"),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
+          // Use MessageUtils instead of ScaffoldMessenger
+          MessageUtils.showErrorMessage(
+              context,
+              "${context.tr('error')}: ${e.toString()}"
           );
         }
       }

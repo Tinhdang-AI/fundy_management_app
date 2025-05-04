@@ -82,7 +82,7 @@ class _CustomYearPickerState extends State<CustomYearPicker> {
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                             color: widget.focusedDate.year == year
-                                ? Colors.orange
+                                ? Color(0xFFFF8B55)
                                 : Colors.black87,
                             fontSize: 16,
                           ),
@@ -108,7 +108,7 @@ class _CustomYearPickerState extends State<CustomYearPicker> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: Color(0xFFFF8B55),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -131,7 +131,7 @@ class _CustomYearPickerState extends State<CustomYearPicker> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFA07A),
+        color: const Color(0xFFFF8B55),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
