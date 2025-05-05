@@ -58,6 +58,8 @@ class CalendarViewModel extends ChangeNotifier {
 
   // Initialize with current date data
   Future<void> initialize() async {
+    _selectedDay = DateTime.now();
+    _focusedDay = DateTime.now();
     await loadMonthData();
     await loadSelectedDayData();
   }

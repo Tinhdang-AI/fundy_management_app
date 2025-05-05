@@ -175,8 +175,8 @@ class ExpenseViewModel extends ChangeNotifier {
             (userData['expenseCategories'] as List).isNotEmpty) {
           List<dynamic> loadedExpenseCategories = userData['expenseCategories'];
           List<Map<String, dynamic>> parsedExpenseCategories = loadedExpenseCategories.map((item) {
-            String label;
             String labelKey = item["label"] ?? "";
+            String label;
 
             // Check if this is a translation key (starts with "category_")
             if (labelKey.startsWith("category_")) {
@@ -194,7 +194,7 @@ class ExpenseViewModel extends ChangeNotifier {
 
           // Ensure "Edit" category exists
           String editLabel = _tr('category_edit');
-          if (!parsedExpenseCategories.any((element) => element["label"] == editLabel)) {
+          if (!parsedExpenseCategories.any((element) => element["labelKey"] == "category_edit")) {
             parsedExpenseCategories.add({
               "icon": Icons.build,
               "label": editLabel,
@@ -212,8 +212,8 @@ class ExpenseViewModel extends ChangeNotifier {
             (userData['incomeCategories'] as List).isNotEmpty) {
           List<dynamic> loadedIncomeCategories = userData['incomeCategories'];
           List<Map<String, dynamic>> parsedIncomeCategories = loadedIncomeCategories.map((item) {
-            String label;
             String labelKey = item["label"] ?? "";
+            String label;
 
             // Check if this is a translation key (starts with "category_")
             if (labelKey.startsWith("category_")) {
@@ -231,7 +231,7 @@ class ExpenseViewModel extends ChangeNotifier {
 
           // Ensure "Edit" category exists
           String editLabel = _tr('category_edit');
-          if (!parsedIncomeCategories.any((element) => element["label"] == editLabel)) {
+          if (!parsedIncomeCategories.any((element) => element["labelKey"] == "category_edit")) {
             parsedIncomeCategories.add({
               "icon": Icons.build,
               "label": editLabel,
@@ -280,7 +280,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert expense categories to serializable format
       List<Map<String, dynamic>> serializableExpenseCategories = defaultExpenseCategories.map((category) {
         return {
-          "label": category["labelKey"] ?? category["label"], // Store the key, not the translated value
+          "label": category["labelKey"], // Store the key, not the translated value
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -289,7 +289,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert income categories to serializable format
       List<Map<String, dynamic>> serializableIncomeCategories = defaultIncomeCategories.map((category) {
         return {
-          "label": category["labelKey"] ?? category["label"], // Store the key, not the translated value
+          "label": category["labelKey"], // Store the key, not the translated value
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -415,7 +415,7 @@ class ExpenseViewModel extends ChangeNotifier {
       List<Map<String, dynamic>> targetList = isExpense ? _expenseCategories : _incomeCategories;
 
       // Tách category_edit nếu có
-      final editIndex = targetList.indexWhere((cat) => cat["label"] == _tr('category_edit'));
+      final editIndex = targetList.indexWhere((cat) => cat["labelKey"] == "category_edit");
       Map<String, dynamic>? editCategory;
       if (editIndex != -1) {
         editCategory = targetList.removeAt(editIndex);
@@ -450,11 +450,9 @@ class ExpenseViewModel extends ChangeNotifier {
     }
   }
 
-
-
   // Save categories to Firebase
   Future<void> _saveCategoriesToFirebase() async {
-    _setLoading(false);
+    _setLoading(true);
 
     try {
       User? currentUser = _auth.currentUser;
@@ -468,7 +466,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert expense categories to serializable format
       List<Map<String, dynamic>> serializableExpenseCategories = _expenseCategories.map((category) {
         return {
-          "label": category["labelKey"] ?? category["label"], // Use the labelKey if available
+          "label": category["labelKey"], // Use the labelKey for storage
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -477,7 +475,7 @@ class ExpenseViewModel extends ChangeNotifier {
       // Convert income categories to serializable format
       List<Map<String, dynamic>> serializableIncomeCategories = _incomeCategories.map((category) {
         return {
-          "label": category["labelKey"] ?? category["label"], // Use the labelKey if available
+          "label": category["labelKey"], // Use the labelKey for storage
           "iconCode": (category["icon"] as IconData).codePoint,
           "fontFamily": "MaterialIcons"
         };
@@ -505,13 +503,25 @@ class ExpenseViewModel extends ChangeNotifier {
     required DateTime date,
     required bool isExpense,
   }) async {
-    _setLoading(false);
+    _setLoading(true);
 
     try {
+      // Find the category's key from the label
+      String categoryKey = category;
+
+      // Find the matching category to get its key
+      List<Map<String, dynamic>> categories = isExpense ? _expenseCategories : _incomeCategories;
+      for (var item in categories) {
+        if (item["label"] == category) {
+          categoryKey = item["labelKey"];
+          break;
+        }
+      }
+
       await _databaseService.addExpense(
         note: note,
         amount: amount,
-        category: category,
+        category: categoryKey, // Store the key instead of display name
         categoryIcon: categoryIcon,
         date: date,
         isExpense: isExpense,
@@ -543,7 +553,6 @@ class ExpenseViewModel extends ChangeNotifier {
   }
 
   void refreshCategoryLabels() {
-
     _expenseCategories = _expenseCategories.map((category) {
       // Update translated label for default categories
       String labelKey = category["labelKey"] ?? "";

@@ -132,10 +132,29 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue;
     }
 
-    // Xóa tất cả ký tự không phải số
-    String newText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    // Remove all non-digit characters (and keep decimal point for currencies that need it)
+    String newText;
+    bool useDecimals = _currencyCode == 'USD' || _currencyCode == 'EUR' ||
+        _currencyCode == 'GBP' || _currencyCode == 'SGD' ||
+        _currencyCode == 'MYR';
 
-    // Chuyển đổi thành số
+    if (useDecimals) {
+      // Keep decimal point for currencies that use decimals
+      newText = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
+
+      // Ensure there's only one decimal point
+      int decimalPointCount = '.'.allMatches(newText).length;
+      if (decimalPointCount > 1) {
+        int firstDecimalIndex = newText.indexOf('.');
+        newText = newText.substring(0, firstDecimalIndex + 1) +
+            newText.substring(firstDecimalIndex + 1).replaceAll('.', '');
+      }
+    } else {
+      // No decimals for currencies like VND, JPY, KRW
+      newText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    }
+
+    // If text is empty after filtering, return empty value
     if (newText.isEmpty) {
       return TextEditingValue(
         text: '',
@@ -143,31 +162,55 @@ class CurrencyInputFormatter extends TextInputFormatter {
       );
     }
 
-    int value = int.parse(newText);
-    String formattedText = formatCurrency.format(value);
+    String formattedText;
+    if (useDecimals) {
+      // Handle decimal currencies
+      if (newText.contains('.')) {
+        // Split into whole number and decimal parts
+        List<String> parts = newText.split('.');
+        String wholePart = parts[0];
+        String decimalPart = parts.length > 1 ? parts[1] : '';
 
-    // Đặt lại vị trí con trỏ
+        // Format the whole part with thousand separators
+        if (wholePart.isNotEmpty) {
+          double value = double.parse(wholePart);
+          wholePart = NumberFormat('#,###', 'en_US').format(value);
+        }
+
+        // Limit decimal part to 2 digits
+        if (decimalPart.length > 2) {
+          decimalPart = decimalPart.substring(0, 2);
+        }
+
+        // Combine parts
+        formattedText = wholePart + '.' + decimalPart;
+      } else {
+        // No decimal point yet
+        double value = double.parse(newText);
+        formattedText = NumberFormat('#,###', 'en_US').format(value);
+      }
+    } else {
+      // For currencies without decimals (VND, JPY, KRW)
+      int value = int.parse(newText);
+      formattedText = formatCurrency.format(value);
+    }
+
+    // Calculate cursor position
     int cursorPosition = formattedText.length;
     if (newValue.selection.start > 0) {
-      // Tính toán vị trí con trỏ dựa trên sự thay đổi về độ dài
-      int oldLength = oldValue.text.length;
-      int newLength = formattedText.length;
+      // Try to maintain cursor position relative to the digits
+      int oldDigitCount = oldValue.text.replaceAll(RegExp(r'[^\d.]'), '').length;
+      int newDigitCount = newText.length;
       int oldPosition = oldValue.selection.start;
 
-      // Nếu xóa ký tự
-      if (oldLength > newLength && oldPosition > 0) {
-        cursorPosition = oldPosition - (oldLength - newLength);
-      }
-      // Nếu thêm ký tự
-      else if (newLength > oldLength) {
-        cursorPosition = oldPosition + (newLength - oldLength);
-      }
-      // Giữ nguyên vị trí
-      else {
-        cursorPosition = oldPosition;
-      }
+      // Calculate what percentage through the string the cursor was
+      double percentagePosition = oldDigitCount > 0 ?
+      oldPosition / oldValue.text.length : 1.0;
 
-      // Đảm bảo vị trí con trỏ nằm trong phạm vi văn bản
+      // Apply same percentage to new string length
+      cursorPosition = (formattedText.length * percentagePosition).round();
+
+      // Ensure cursor is within bounds
       cursorPosition = cursorPosition.clamp(0, formattedText.length);
     }
 
@@ -181,9 +224,21 @@ class CurrencyInputFormatter extends TextInputFormatter {
 // 3. Hàm chuyển đổi từ chuỗi định dạng tiền tệ sang số
 double parseFormattedCurrency(String formattedAmount) {
   if (formattedAmount.isEmpty) return 0;
-  // Loại bỏ tất cả dấu ngăn cách và ký tự không phải số
-  String numericString = formattedAmount.replaceAll(RegExp(r'[^\d]'), '');
-  return numericString.isEmpty ? 0 : double.parse(numericString);
+
+  bool useDecimals = _currencyCode == 'USD' || _currencyCode == 'EUR' ||
+      _currencyCode == 'GBP' || _currencyCode == 'SGD' ||
+      _currencyCode == 'MYR';
+
+  if (useDecimals) {
+    // For currencies with decimals
+    // Remove all non-digit and non-decimal characters
+    String cleaned = formattedAmount.replaceAll(RegExp(r'[^\d.]'), '');
+    return cleaned.isEmpty ? 0 : double.parse(cleaned);
+  } else {
+    // For currencies without decimals
+    String numericString = formattedAmount.replaceAll(RegExp(r'[^\d]'), '');
+    return numericString.isEmpty ? 0 : double.parse(numericString);
+  }
 }
 
 // 4. Hàm định dạng số thành chuỗi tiền tệ có đơn vị - đã sửa logic chuyển đổi

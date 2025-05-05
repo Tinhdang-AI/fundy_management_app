@@ -99,6 +99,7 @@ class ReportViewModel extends ChangeNotifier {
 
   // Initialize
   Future<void> initialize() async {
+    _selectedDate = DateTime.now();
     await checkForData();
   }
 

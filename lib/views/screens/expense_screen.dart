@@ -22,9 +22,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   // State variables
   int selectedTab = 0; // 0: Expense, 1: Income
   DateTime selectedDate = DateTime.now();
-  String selectedCategory = "";
+  String selectedCategoryLabel = "";
+  String selectedCategoryKey = "";
   String selectedCategoryIcon = "";
   IconData? selectedIconForNewCategory;
+  bool _isAddingCategory = false;
 
   @override
   void initState() {
@@ -160,7 +162,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         onTap: () {
           setState(() {
             selectedTab = index;
-            selectedCategory = "";
+            selectedCategoryLabel = "";
+            selectedCategoryKey = "";
             selectedCategoryIcon = "";
           });
         },
@@ -295,8 +298,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
-        bool isSelected = selectedCategory == categories[index]["label"];
-        bool isEditButton = categories[index]["label"] == context.tr('category_edit');
+        bool isSelected = selectedCategoryLabel == categories[index]["label"];
+        bool isEditButton = categories[index]["labelKey"] == "category_edit";
 
         return GestureDetector(
           onTap: () {
@@ -304,7 +307,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               viewModel.toggleEditMode();
             } else {
               setState(() {
-                selectedCategory = categories[index]["label"];
+                selectedCategoryLabel = categories[index]["label"];
+                selectedCategoryKey = categories[index]["labelKey"]; // Store key for saving
                 selectedCategoryIcon = (categories[index]["icon"] as IconData).codePoint.toString();
               });
             }
@@ -398,8 +402,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         : context.tr('income_category');
 
     final displayCategories = selectedTab == 0
-        ? viewModel.expenseCategories.where((cat) => cat["label"] != context.tr('category_edit')).toList()
-        : viewModel.incomeCategories.where((cat) => cat["label"] != context.tr('category_edit')).toList();
+        ? viewModel.expenseCategories.where((cat) => cat["labelKey"] != "category_edit").toList()
+        : viewModel.incomeCategories.where((cat) => cat["labelKey"] != "category_edit").toList();
 
     return Expanded(
       child: Column(
@@ -445,35 +449,42 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 vertical: 12
                             ),
                           ),
+                          enabled: !_isAddingCategory,
                         ),
                       ),
                       SizedBox(width: 12),
 
                       GestureDetector(
-                        onTap: _showIconSelector,
+                        onTap: _isAddingCategory ? null : _showIconSelector,
                         child: Container(
                           width: 54,
                           height: 54,
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey.shade100,
+                            color: _isAddingCategory
+                                ? Colors.grey.shade200
+                                : Colors.grey.shade100,
                           ),
                           child: Center(
                             child: selectedIconForNewCategory != null
                                 ? Icon(selectedIconForNewCategory,
                                 size: 32,
-                                color: Color(0xFFFF8B55))
+                                color: _isAddingCategory
+                                    ? Colors.grey
+                                    : Color(0xFFFF8B55))
                                 : Icon(Icons.add_circle_outline,
                                 size: 32,
-                                color: Color(0xFFFF8B55)),
+                                color: _isAddingCategory
+                                    ? Colors.grey
+                                    : Color(0xFFFF8B55)),
                           ),
                         ),
                       ),
                       SizedBox(width: 12),
 
                       ElevatedButton(
-                        onPressed: () => _addNewCategory(viewModel),
+                        onPressed: _isAddingCategory ? null : () => _addNewCategory(viewModel),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFFFF8B55),
                           shape: RoundedRectangleBorder(
@@ -484,7 +495,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                               horizontal: 16
                           ),
                         ),
-                        child: Text(
+                        child: _isAddingCategory
+                            ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            )
+                        )
+                            : Text(
                           context.tr('add'),
                           style: TextStyle(
                               color: Colors.white,
@@ -519,14 +539,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: ReorderableListView.builder(
+                child: viewModel.isLoading
+                    ? Center(child: CircularProgressIndicator(color: Color(0xFFFF8B55)))
+                    : ReorderableListView.builder(
                   padding: EdgeInsets.zero,
                   itemCount: displayCategories.length,
                   itemBuilder: (context, index) {
                     final category = displayCategories[index];
 
                     return ListTile(
-                      key: ValueKey(category["label"]),
+                      key: ValueKey(category["labelKey"]),
                       leading: Icon(
                           category["icon"],
                           size: 30,
@@ -547,13 +569,13 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                                 color: Colors.red
                             ),
                             onPressed: () {
-                              // Tìm chỉ mục thực tế trong danh sách gốc
+                              // Find the actual index in original list
                               final originalList = selectedTab == 0
                                   ? viewModel.expenseCategories
                                   : viewModel.incomeCategories;
 
                               int originalIndex = originalList.indexWhere(
-                                      (cat) => cat["label"] == category["label"]);
+                                      (cat) => cat["labelKey"] == category["labelKey"]);
 
                               if (originalIndex >= 0) {
                                 _deleteCategory(viewModel, originalIndex);
@@ -673,11 +695,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       return;
     }
 
+    setState(() {
+      _isAddingCategory = true;
+    });
+
     final success = await viewModel.addCategory(
         categoryNameController.text.trim(),
         selectedIconForNewCategory!,
         selectedTab == 0 // true for expense, false for income
     );
+
+    setState(() {
+      _isAddingCategory = false;
+    });
 
     if (!success) {
       // If adding fails, display error from ViewModel
@@ -718,7 +748,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
   // Save expense
   Future<void> _saveExpense(ExpenseViewModel viewModel) async {
-    if (amountController.text.isEmpty || selectedCategory.isEmpty) {
+    if (amountController.text.isEmpty || selectedCategoryLabel.isEmpty) {
       MessageUtils.showErrorMessage(
           context, context.tr('enter_amount_category'));
       return;
@@ -736,7 +766,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     final success = await viewModel.addTransaction(
       note: noteController.text,
       amount: amountInVND,
-      category: selectedCategory,
+      category: selectedCategoryLabel,
       categoryIcon: selectedCategoryIcon,
       date: selectedDate,
       isExpense: selectedTab == 0,
@@ -747,7 +777,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       setState(() {
         noteController.clear();
         amountController.clear();
-        selectedCategory = "";
+        selectedCategoryLabel = "";
+        selectedCategoryKey = "";
         selectedCategoryIcon = "";
       });
 
