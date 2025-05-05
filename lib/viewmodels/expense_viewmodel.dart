@@ -460,7 +460,7 @@ class ExpenseViewModel extends ChangeNotifier {
 
   // Save categories to Firebase
   Future<void> _saveCategoriesToFirebase() async {
-    _setLoading(true);
+    _setLoading(false);
 
     try {
       User? currentUser = _auth.currentUser;
