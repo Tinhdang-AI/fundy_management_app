@@ -142,6 +142,14 @@ class ExpenseViewModel extends ChangeNotifier {
   List<Map<String, dynamic>> get incomeCategories => _incomeCategories;
   List<IconData> get icons => availableIcons;
 
+  // Reset initialization state - NEW METHOD
+  void resetInitializationState() {
+    _isInitialized = false;
+    _expenseCategories = [];
+    _incomeCategories = [];
+    notifyListeners();
+  }
+
   // Load categories from Firebase
   Future<void> loadCategories() async {
     if (_isInitialized) return;

@@ -132,91 +132,95 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue;
     }
 
-    // Remove all non-digit characters (and keep decimal point for currencies that need it)
-    String newText;
+    // Xác định xem đơn vị tiền tệ có sử dụng số thập phân không
     bool useDecimals = _currencyCode == 'USD' || _currencyCode == 'EUR' ||
         _currencyCode == 'GBP' || _currencyCode == 'SGD' ||
         _currencyCode == 'MYR';
 
+    // Lọc ký tự không phải số (và dấu thập phân nếu cần)
+    String digitsOnly;
     if (useDecimals) {
-      // Keep decimal point for currencies that use decimals
-      newText = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
+      // Giữ lại số và dấu thập phân
+      digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
 
-      // Ensure there's only one decimal point
-      int decimalPointCount = '.'.allMatches(newText).length;
-      if (decimalPointCount > 1) {
-        int firstDecimalIndex = newText.indexOf('.');
-        newText = newText.substring(0, firstDecimalIndex + 1) +
-            newText.substring(firstDecimalIndex + 1).replaceAll('.', '');
+      // Đảm bảo chỉ có một dấu thập phân
+      int decimalCount = '.'.allMatches(digitsOnly).length;
+      if (decimalCount > 1) {
+        int firstDecimalIndex = digitsOnly.indexOf('.');
+        digitsOnly = digitsOnly.substring(0, firstDecimalIndex + 1) +
+            digitsOnly.substring(firstDecimalIndex + 1).replaceAll('.', '');
       }
     } else {
-      // No decimals for currencies like VND, JPY, KRW
-      newText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+      // Chỉ giữ lại số cho tiền tệ không dùng số thập phân
+      digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
     }
 
-    // If text is empty after filtering, return empty value
-    if (newText.isEmpty) {
+    // Nếu không có ký tự số, trả về chuỗi rỗng
+    if (digitsOnly.isEmpty) {
       return TextEditingValue(
         text: '',
         selection: TextSelection.collapsed(offset: 0),
       );
     }
 
-    String formattedText;
+    String formattedValue;
+    int selectionIndex;
+
     if (useDecimals) {
-      // Handle decimal currencies
-      if (newText.contains('.')) {
-        // Split into whole number and decimal parts
-        List<String> parts = newText.split('.');
+      // Xử lý tiền tệ có phần thập phân
+      if (digitsOnly.contains('.')) {
+        List<String> parts = digitsOnly.split('.');
         String wholePart = parts[0];
         String decimalPart = parts.length > 1 ? parts[1] : '';
 
-        // Format the whole part with thousand separators
+        // Định dạng phần nguyên
         if (wholePart.isNotEmpty) {
-          double value = double.parse(wholePart);
-          wholePart = NumberFormat('#,###', 'en_US').format(value);
+          // Sử dụng locale cho phù hợp với đơn vị tiền tệ
+          wholePart = NumberFormat('#,###', 'en_US').format(double.parse(wholePart));
         }
 
-        // Limit decimal part to 2 digits
+        // Giới hạn phần thập phân tối đa 2 chữ số
         if (decimalPart.length > 2) {
           decimalPart = decimalPart.substring(0, 2);
         }
 
-        // Combine parts
-        formattedText = wholePart + '.' + decimalPart;
+        // Kết hợp hai phần
+        formattedValue = wholePart + '.' + decimalPart;
       } else {
-        // No decimal point yet
-        double value = double.parse(newText);
-        formattedText = NumberFormat('#,###', 'en_US').format(value);
+        // Nếu chưa có dấu thập phân
+        double value = double.parse(digitsOnly);
+        formattedValue = NumberFormat('#,###', 'en_US').format(value);
       }
     } else {
-      // For currencies without decimals (VND, JPY, KRW)
-      int value = int.parse(newText);
-      formattedText = formatCurrency.format(value);
+      // Định dạng tiền tệ không dùng số thập phân (VND, JPY, KRW)
+      double value = double.parse(digitsOnly);
+      formattedValue = formatCurrency.format(value);
     }
 
-    // Calculate cursor position
-    int cursorPosition = formattedText.length;
+    // Tính toán vị trí con trỏ sau khi định dạng
+    selectionIndex = formattedValue.length;
+
+    // Nếu con trỏ ở vị trí cụ thể, cố gắng giữ vị trí tương đối
     if (newValue.selection.start > 0) {
-      // Try to maintain cursor position relative to the digits
+      // Đếm số ký tự số trong chuỗi cũ
       int oldDigitCount = oldValue.text.replaceAll(RegExp(r'[^\d.]'), '').length;
-      int newDigitCount = newText.length;
-      int oldPosition = oldValue.selection.start;
+      int newDigitCount = digitsOnly.length;
 
-      // Calculate what percentage through the string the cursor was
-      double percentagePosition = oldDigitCount > 0 ?
-      oldPosition / oldValue.text.length : 1.0;
+      // Tính phần trăm vị trí con trỏ trong chuỗi cũ
+      double positionPercent = oldDigitCount > 0
+          ? oldValue.selection.start / oldValue.text.length
+          : 1.0;
 
-      // Apply same percentage to new string length
-      cursorPosition = (formattedText.length * percentagePosition).round();
+      // Áp dụng phần trăm đó cho chuỗi mới
+      selectionIndex = (formattedValue.length * positionPercent).round();
 
-      // Ensure cursor is within bounds
-      cursorPosition = cursorPosition.clamp(0, formattedText.length);
+      // Đảm bảo vị trí không vượt quá độ dài chuỗi
+      selectionIndex = selectionIndex.clamp(0, formattedValue.length);
     }
 
     return TextEditingValue(
-      text: formattedText,
-      selection: TextSelection.collapsed(offset: cursorPosition),
+      text: formattedValue,
+      selection: TextSelection.collapsed(offset: selectionIndex),
     );
   }
 }
@@ -225,23 +229,24 @@ class CurrencyInputFormatter extends TextInputFormatter {
 double parseFormattedCurrency(String formattedAmount) {
   if (formattedAmount.isEmpty) return 0;
 
+  // Xác định xem đồng tiền có dùng số thập phân không
   bool useDecimals = _currencyCode == 'USD' || _currencyCode == 'EUR' ||
       _currencyCode == 'GBP' || _currencyCode == 'SGD' ||
       _currencyCode == 'MYR';
 
+  String cleanedAmount;
   if (useDecimals) {
-    // For currencies with decimals
-    // Remove all non-digit and non-decimal characters
-    String cleaned = formattedAmount.replaceAll(RegExp(r'[^\d.]'), '');
-    return cleaned.isEmpty ? 0 : double.parse(cleaned);
+    // Giữ lại số và dấu thập phân cho đồng tiền có số thập phân
+    cleanedAmount = formattedAmount.replaceAll(RegExp(r'[^\d.]'), '');
   } else {
-    // For currencies without decimals
-    String numericString = formattedAmount.replaceAll(RegExp(r'[^\d]'), '');
-    return numericString.isEmpty ? 0 : double.parse(numericString);
+    // Chỉ giữ lại số cho đồng tiền không dùng số thập phân
+    cleanedAmount = formattedAmount.replaceAll(RegExp(r'[^\d]'), '');
   }
+
+  return cleanedAmount.isEmpty ? 0 : double.parse(cleanedAmount);
 }
 
-// 4. Hàm định dạng số thành chuỗi tiền tệ có đơn vị - đã sửa logic chuyển đổi
+// 4. Hàm định dạng số thành chuỗi tiền tệ có đơn vị
 String formatCurrencyWithSymbol(double amountInVND) {
   try {
     // Chuyển đổi giá trị từ VND sang đơn vị tiền tệ hiện tại
@@ -260,12 +265,18 @@ String formatCurrencyWithSymbol(double amountInVND) {
       // Không dùng chữ số thập phân cho JPY, KRW
       formattedAmount = formatCurrency.format(convertedAmount.round());
     } else {
-      // Mặc định cho các loại tiền tệ khác
+      // Mặc định cho các loại tiền tệ khác (VND)
       formattedAmount = formatCurrency.format(convertedAmount.round());
     }
 
     // Trả về chuỗi tiền tệ với đơn vị
-    return '$formattedAmount $_currencySymbol';
+    // Định dạng ký hiệu tiền tệ theo vị trí thích hợp
+    if (_currencyCode == 'USD') {
+      return '$_currencySymbol$formattedAmount'; // $1,234.56
+    } else {
+      // Mặc định cho các loại tiền tệ khác
+      return '$formattedAmount $_currencySymbol'; // 1,234 đ
+    }
   } catch (e) {
     print("Lỗi khi định dạng tiền tệ: $e");
     // Trả về một giá trị mặc định nếu có lỗi

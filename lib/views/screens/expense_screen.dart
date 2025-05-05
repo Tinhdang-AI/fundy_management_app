@@ -254,32 +254,54 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: amountController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.left,
-                          style: TextStyle(fontSize: 18),
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "0",
-                          ),
-                          inputFormatters: [
-                            CurrencyInputFormatter(),
-                          ],
-                        ),
-                      ),
-                      Text(getCurrentSymbol(), style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
+                  child: _buildCurrencyInputField(),
                 ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  // New method to handle currency input field with correct symbol placement
+  Widget _buildCurrencyInputField() {
+    String currencyCode = getCurrentCode();
+    String currencySymbol = getCurrentSymbol();
+
+    // Determine symbol position based on currency code
+    bool symbolAtStart = currencyCode == 'USD';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (symbolAtStart)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Text(currencySymbol, style: TextStyle(fontSize: 16)),
+          ),
+
+        Expanded(
+          child: TextField(
+            controller: amountController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.left,
+            style: TextStyle(fontSize: 18),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: "0",
+            ),
+            inputFormatters: [
+              CurrencyInputFormatter(),
+            ],
+          ),
+        ),
+
+        if (!symbolAtStart)
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: Text(currencySymbol, style: TextStyle(fontSize: 16)),
+          ),
       ],
     );
   }

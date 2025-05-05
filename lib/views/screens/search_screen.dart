@@ -25,6 +25,7 @@ class _SearchScreenState extends State<SearchScreen> {
     // Initialize the view model when the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final searchViewModel = Provider.of<SearchViewModel>(context, listen: false);
+      searchViewModel.setContext(context);
       searchViewModel.initialize();
     });
   }

@@ -25,6 +25,9 @@ class SearchViewModel extends ChangeNotifier {
   List<ExpenseModel> _allExpenses = [];
   List<ExpenseModel> _searchResults = [];
   List<String> _availableCategories = [];
+  // Map to store original category keys and their translated display names
+  Map<String, String> _categoryKeyToDisplay = {};
+  Map<String, String> _displayToOriginalKey = {};
 
   // Totals
   double _expenseTotal = 0;
@@ -68,6 +71,14 @@ class SearchViewModel extends ChangeNotifier {
     return text;
   }
 
+  // Translate category name
+  String translateCategoryName(String category) {
+    if (category.startsWith('category_')) {
+      return tr(category);
+    }
+    return category;
+  }
+
   // Initialize
   Future<void> initialize() async {
     await loadAllExpenses();
@@ -80,17 +91,27 @@ class SearchViewModel extends ChangeNotifier {
     try {
       final expenses = await _databaseService.getUserExpenses().first;
 
-      // Extract unique categories
-      Set<String> categories = {};
+      // Extract unique categories and create translations mapping
+      Set<String> uniqueOriginalCategories = {};
+      _categoryKeyToDisplay = {};
+      _displayToOriginalKey = {};
+
       expenses.forEach((expense) {
         if (expense.category.isNotEmpty) {
-          categories.add(expense.category);
+          uniqueOriginalCategories.add(expense.category);
+
+          // Create mapping between original keys and display names
+          String displayName = translateCategoryName(expense.category);
+          _categoryKeyToDisplay[expense.category] = displayName;
+          _displayToOriginalKey[displayName] = expense.category;
         }
       });
 
       _allExpenses = expenses;
       _searchResults = expenses;
-      _availableCategories = categories.toList()..sort();
+
+      // Store translated category names for dropdown
+      _availableCategories = _categoryKeyToDisplay.values.toList()..sort();
 
       _calculateTotals();
     } catch (e) {
@@ -111,17 +132,21 @@ class SearchViewModel extends ChangeNotifier {
       if (_searchText.isNotEmpty) {
         String query = _searchText.toLowerCase().trim();
         filteredResults = filteredResults.where((expense) {
+          String translatedCategory = translateCategoryName(expense.category);
           return expense.note.toLowerCase().contains(query) ||
-              expense.category.toLowerCase().contains(query) ||
+              translatedCategory.toLowerCase().contains(query) ||
               expense.amount.toString().contains(query);
         }).toList();
       }
 
-      // Apply category filter
+      // Apply category filter - use original key when filtering
       if (_selectedCategory.isNotEmpty) {
-        filteredResults = filteredResults.where((expense) {
-          return expense.category == _selectedCategory;
-        }).toList();
+        final originalKey = _displayToOriginalKey[_selectedCategory];
+        if (originalKey != null) {
+          filteredResults = filteredResults.where((expense) {
+            return expense.category == originalKey;
+          }).toList();
+        }
       }
 
       // Apply date range filter
@@ -236,6 +261,16 @@ class SearchViewModel extends ChangeNotifier {
         int searchIndex = _searchResults.indexWhere((item) => item.id == expense.id);
         if (searchIndex >= 0) {
           _searchResults[searchIndex] = updatedExpense;
+        }
+
+        // Update category mappings if needed
+        if (!_categoryKeyToDisplay.containsKey(updatedExpense.category)) {
+          String displayName = translateCategoryName(updatedExpense.category);
+          _categoryKeyToDisplay[updatedExpense.category] = displayName;
+          _displayToOriginalKey[displayName] = updatedExpense.category;
+
+          // Update available categories
+          _availableCategories = _categoryKeyToDisplay.values.toList()..sort();
         }
 
         // Reapply filters in case the update affects search results

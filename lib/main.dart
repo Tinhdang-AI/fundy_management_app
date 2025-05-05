@@ -51,9 +51,7 @@ class _FundyAppState extends State<FundyApp> {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        // Register all our ViewModels
-        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+      providers: [ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => ExpenseViewModel()),
         ChangeNotifierProvider(create: (_) => CalendarViewModel()),
         ChangeNotifierProvider(create: (_) => ReportViewModel()),

@@ -1,3 +1,4 @@
+import '../../viewmodels/expense_viewmodel.dart';
 import '/localization/app_localizations_extension.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -491,6 +492,10 @@ class _MoreScreenState extends State<MoreScreen> {
     );
 
     if (confirmed == true) {
+
+      final expenseViewModel = Provider.of<ExpenseViewModel>(context, listen: false);
+      expenseViewModel.resetInitializationState();
+
       final success = await viewModel.signOut();
 
       if (success) {
