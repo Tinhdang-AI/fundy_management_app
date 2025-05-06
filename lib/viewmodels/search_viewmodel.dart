@@ -3,6 +3,7 @@ import '../models/expense_model.dart';
 import '../services/database_service.dart';
 import '../utils/transaction_utils.dart';
 import '../localization/app_localizations.dart';
+import 'package:diacritic/diacritic.dart';
 
 class SearchViewModel extends ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
@@ -131,11 +132,19 @@ class SearchViewModel extends ChangeNotifier {
       // Apply text search filter
       if (_searchText.isNotEmpty) {
         String query = _searchText.toLowerCase().trim();
+        // Chuyển đổi query thành không dấu để so sánh
+        String normalizedQuery = removeDiacritics(query);
+
         filteredResults = filteredResults.where((expense) {
+          // Chuyển đổi các giá trị thành không dấu để so sánh
           String translatedCategory = translateCategoryName(expense.category);
-          return expense.note.toLowerCase().contains(query) ||
-              translatedCategory.toLowerCase().contains(query) ||
-              expense.amount.toString().contains(query);
+          String normalizedNote = removeDiacritics(expense.note.toLowerCase());
+          String normalizedCategory = removeDiacritics(translatedCategory.toLowerCase());
+          String amountStr = expense.amount.toString();
+
+          return normalizedNote.contains(normalizedQuery) ||
+              normalizedCategory.contains(normalizedQuery) ||
+              amountStr.contains(normalizedQuery);
         }).toList();
       }
 
@@ -167,7 +176,7 @@ class SearchViewModel extends ChangeNotifier {
       }
 
       _searchResults = filteredResults;
-      _isFilterActive = _selectedCategory.isNotEmpty || _startDate != null || _endDate != null;
+      _isFilterActive = _selectedCategory.isNotEmpty || _startDate != null || _endDate != null || _searchText.isNotEmpty;
 
       _calculateTotals();
     } catch (e) {
