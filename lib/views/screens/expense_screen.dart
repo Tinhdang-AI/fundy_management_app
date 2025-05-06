@@ -438,6 +438,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           SizedBox(height: 16),
 
           Card(
+            color: Colors.white,
             elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -555,6 +556,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
 
           Expanded(
             child: Card(
+              color: Colors.white,
               elevation: 2,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

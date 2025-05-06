@@ -175,6 +175,7 @@ class _SearchScreenState extends State<SearchScreen> {
           icon: Icon(Icons.arrow_drop_down),
           iconSize: 24,
           style: TextStyle(color: Colors.black, fontSize: 16),
+          dropdownColor: Colors.white,
           onChanged: (String? newValue) {
             viewModel.setSelectedCategory(newValue ?? '');
           },

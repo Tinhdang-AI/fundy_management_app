@@ -11,15 +11,6 @@ class CustomDatePicker extends StatelessWidget {
   final Color arrowColor;
   final bool showBorder;
 
-  /// Widget chọn lịch tùy chỉnh cho ứng dụng
-  ///
-  /// [selectedDate]: Ngày đang được chọn
-  /// [onDateChanged]: Callback khi người dùng thay đổi ngày
-  /// [showMonthInfo]: Hiển thị thông tin tháng bên dưới ngày (mặc định: false)
-  /// [backgroundColor]: Màu nền của widget (mặc định: Colors.white)
-  /// [textColor]: Màu chữ (mặc định: Colors.black)
-  /// [arrowColor]: Màu của các mũi tên điều hướng (mặc định: Colors.orange)
-  /// [showBorder]: Hiển thị viền (mặc định: true)
   const CustomDatePicker({
     Key? key,
     required this.selectedDate,
@@ -34,12 +25,15 @@ class CustomDatePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final monthRange = _getMonthRangeText(selectedDate);
+    // Calculate the date limit (30 days from now)
+    final DateTime maxDate = DateTime.now().add(const Duration(days: 30));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          Text(context.tr('tab_calendar'),
+          Text(
+            context.tr('tab_calendar'),
             style: TextStyle(
               color: textColor ?? Colors.black,
               fontWeight: FontWeight.bold,
@@ -86,7 +80,10 @@ class CustomDatePicker extends StatelessWidget {
           ),
           _buildNavigationButton(
             icon: Icons.chevron_right,
-            onPressed: () => onDateChanged(selectedDate.add(const Duration(days: 1))),
+            // Only allow forward navigation if the next day is within the 30-day limit
+            onPressed: selectedDate.add(const Duration(days: 1)).isAfter(maxDate)
+                ? null  // Disable button if next day exceeds limit
+                : () => onDateChanged(selectedDate.add(const Duration(days: 1))),
           ),
         ],
       ),
@@ -95,10 +92,13 @@ class CustomDatePicker extends StatelessWidget {
 
   Widget _buildNavigationButton({
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return IconButton(
-      icon: Icon(icon, color: arrowColor),
+      icon: Icon(
+        icon,
+        color: onPressed == null ? Colors.grey : arrowColor, // Grey out if disabled
+      ),
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(),
@@ -117,7 +117,7 @@ class CustomDatePicker extends StatelessWidget {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now().add(const Duration(days: 30)), // 30 days from now
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

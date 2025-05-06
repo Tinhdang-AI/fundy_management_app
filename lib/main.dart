@@ -68,28 +68,6 @@ class _FundyAppState extends State<FundyApp> {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Fundy',
-            theme: ThemeData(
-              primarySwatch: Colors.blue,
-              scaffoldBackgroundColor: Colors.white,
-              appBarTheme: AppBarTheme(
-                backgroundColor: Colors.white,
-                iconTheme: IconThemeData(color: Colors.black),
-                titleTextStyle: TextStyle(color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold),
-                elevation: 0,
-              ),
-              cardTheme: CardTheme(
-                color: Colors.white,
-                elevation: 2,
-              ),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
             // Cấu hình đa ngôn ngữ
             locale: localeProvider.locale,
             supportedLocales: AppLocalizations.supportedLocales,
