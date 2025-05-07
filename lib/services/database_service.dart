@@ -38,8 +38,8 @@ class DatabaseService {
 
   // Save categories to Firebase
   Future<void> saveCategories({
-    required List<Map<String, dynamic>> expenseCategories,
-    required List<Map<String, dynamic>> incomeCategories
+    required List<Map<String, Object>> expenseCategories,
+    required List<Map<String, Object>> incomeCategories
   }) async {
     if (currentUserId == null) return;
 

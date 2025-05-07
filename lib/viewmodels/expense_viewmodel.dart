@@ -353,19 +353,23 @@ class ExpenseViewModel extends ChangeNotifier {
       // Remove "Edit" entry to add it last
       targetList.removeWhere((element) => element["label"] == editLabel);
 
-      // Add new category - this is a custom category, not using a translation key
-      targetList.add({
+      // Add new category with explicit Map<String, Object> casting
+      Map<String, Object> newCategory = {
         "icon": icon,
         "label": name,
         "labelKey": name,  // For custom categories, key is the same as label
-      });
+      };
 
-      // Add "Edit" entry back
-      targetList.add({
+      targetList.add(newCategory);
+
+      // Add "Edit" entry back with explicit casting
+      Map<String, Object> editCategory = {
         "icon": Icons.build,
         "label": editLabel,
         "labelKey": "category_edit"
-      });
+      };
+
+      targetList.add(editCategory);
 
       if (isExpense) {
         _expenseCategories = targetList;
@@ -471,25 +475,27 @@ class ExpenseViewModel extends ChangeNotifier {
 
       String userId = currentUser.uid;
 
-      // Convert expense categories to serializable format
-      List<Map<String, dynamic>> serializableExpenseCategories = _expenseCategories.map((category) {
+      // Convert expense categories to serializable format with explicit type
+      List<Map<String, Object>> serializableExpenseCategories = _expenseCategories.map((category) {
+        IconData icon = category["icon"] as IconData;
         return {
-          "label": category["labelKey"], // Use the labelKey for storage
-          "iconCode": (category["icon"] as IconData).codePoint,
+          "label": category["labelKey"] as String, // Use the labelKey for storage
+          "iconCode": icon.codePoint,
           "fontFamily": "MaterialIcons"
         };
       }).toList();
 
-      // Convert income categories to serializable format
-      List<Map<String, dynamic>> serializableIncomeCategories = _incomeCategories.map((category) {
+      // Convert income categories to serializable format with explicit type
+      List<Map<String, Object>> serializableIncomeCategories = _incomeCategories.map((category) {
+        IconData icon = category["icon"] as IconData;
         return {
-          "label": category["labelKey"], // Use the labelKey for storage
-          "iconCode": (category["icon"] as IconData).codePoint,
+          "label": category["labelKey"] as String, // Use the labelKey for storage
+          "iconCode": icon.codePoint,
           "fontFamily": "MaterialIcons"
         };
       }).toList();
 
-      // Save to Firestore
+      // Save to Firestore with explicit Map<String, Object> type
       await _firestore.collection('users').doc(userId).set({
         'expenseCategories': serializableExpenseCategories,
         'incomeCategories': serializableIncomeCategories,
