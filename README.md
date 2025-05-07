@@ -71,7 +71,7 @@ Fundy Management App là một ứng dụng quản lý tài chính cá nhân to�
 
 1. **Cài đặt từ file APK**:
 
-Tải file APK:
+Tải file APK: [Download APK](https://github.com/Tinhdang-AI/fundy_management_app/releases/download/v1.0.0/app-release.apk)
 
 2. **Cài đặt từ mã nguồn**:
    - Đảm bảo bạn đã cài đặt Flutter SDK
