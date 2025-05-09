@@ -132,18 +132,13 @@ class CurrencyInputFormatter extends TextInputFormatter {
       return newValue;
     }
 
-    // Xác định xem đơn vị tiền tệ có sử dụng số thập phân không
     bool useDecimals = _currencyCode == 'USD' || _currencyCode == 'EUR' ||
         _currencyCode == 'GBP' || _currencyCode == 'SGD' ||
         _currencyCode == 'MYR';
 
-    // Lọc ký tự không phải số (và dấu thập phân nếu cần)
     String digitsOnly;
     if (useDecimals) {
-      // Giữ lại số và dấu thập phân
       digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
-
-      // Đảm bảo chỉ có một dấu thập phân
       int decimalCount = '.'.allMatches(digitsOnly).length;
       if (decimalCount > 1) {
         int firstDecimalIndex = digitsOnly.indexOf('.');
@@ -151,78 +146,50 @@ class CurrencyInputFormatter extends TextInputFormatter {
             digitsOnly.substring(firstDecimalIndex + 1).replaceAll('.', '');
       }
     } else {
-      // Chỉ giữ lại số cho tiền tệ không dùng số thập phân
       digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
     }
 
-    // Nếu không có ký tự số, trả về chuỗi rỗng
     if (digitsOnly.isEmpty) {
-      return TextEditingValue(
-        text: '',
-        selection: TextSelection.collapsed(offset: 0),
-      );
+      return TextEditingValue(text: '', selection: TextSelection.collapsed(offset: 0));
+    }
+
+    double value;
+    try {
+      value = double.parse(digitsOnly);
+    } catch (e) {
+      return oldValue; // Trả về giá trị cũ nếu không phân tích được
+    }
+
+    // Giới hạn tối đa
+    const double maxValue = 1000000000000; // 1 nghìn tỷ
+    if (value > maxValue) {
+      value = maxValue;
     }
 
     String formattedValue;
-    int selectionIndex;
-
     if (useDecimals) {
-      // Xử lý tiền tệ có phần thập phân
       if (digitsOnly.contains('.')) {
         List<String> parts = digitsOnly.split('.');
         String wholePart = parts[0];
         String decimalPart = parts.length > 1 ? parts[1] : '';
-
-        // Định dạng phần nguyên
-        if (wholePart.isNotEmpty) {
-          // Sử dụng locale cho phù hợp với đơn vị tiền tệ
-          wholePart = NumberFormat('#,###', 'en_US').format(double.parse(wholePart));
-        }
-
-        // Giới hạn phần thập phân tối đa 2 chữ số
         if (decimalPart.length > 2) {
           decimalPart = decimalPart.substring(0, 2);
         }
-
-        // Kết hợp hai phần
-        formattedValue = wholePart + '.' + decimalPart;
+        wholePart = NumberFormat('#,###', 'en_US').format(double.parse(wholePart));
+        formattedValue = '$wholePart.$decimalPart';
       } else {
-        // Nếu chưa có dấu thập phân
-        double value = double.parse(digitsOnly);
         formattedValue = NumberFormat('#,###', 'en_US').format(value);
       }
     } else {
-      // Định dạng tiền tệ không dùng số thập phân (VND, JPY, KRW)
-      double value = double.parse(digitsOnly);
       formattedValue = formatCurrency.format(value);
-    }
-
-    // Tính toán vị trí con trỏ sau khi định dạng
-    selectionIndex = formattedValue.length;
-
-    // Nếu con trỏ ở vị trí cụ thể, cố gắng giữ vị trí tương đối
-    if (newValue.selection.start > 0) {
-      // Đếm số ký tự số trong chuỗi cũ
-      int oldDigitCount = oldValue.text.replaceAll(RegExp(r'[^\d.]'), '').length;
-      int newDigitCount = digitsOnly.length;
-
-      // Tính phần trăm vị trí con trỏ trong chuỗi cũ
-      double positionPercent = oldDigitCount > 0
-          ? oldValue.selection.start / oldValue.text.length
-          : 1.0;
-
-      // Áp dụng phần trăm đó cho chuỗi mới
-      selectionIndex = (formattedValue.length * positionPercent).round();
-
-      // Đảm bảo vị trí không vượt quá độ dài chuỗi
-      selectionIndex = selectionIndex.clamp(0, formattedValue.length);
     }
 
     return TextEditingValue(
       text: formattedValue,
-      selection: TextSelection.collapsed(offset: selectionIndex),
+      selection: TextSelection.collapsed(offset: formattedValue.length),
     );
   }
+
 }
 
 // 3. Hàm chuyển đổi từ chuỗi định dạng tiền tệ sang số
@@ -283,6 +250,15 @@ String formatCurrencyWithSymbol(double amountInVND) {
     return '0 $_currencySymbol';
   }
 }
+
+NumberFormat getCurrentCurrencyFormatter() {
+  if (_currencyCode == 'USD' || _currencyCode == 'EUR' || _currencyCode == 'GBP' || _currencyCode == 'SGD' || _currencyCode == 'MYR') {
+    return NumberFormat('#,##0.00', 'en_US');
+  } else {
+    return NumberFormat('#,###', 'vi_VN');
+  }
+}
+
 
 // 5. Phiên bản bổ sung hỗ trợ định dạng số âm
 String formatCurrencyWithSign(double amountInVND) {

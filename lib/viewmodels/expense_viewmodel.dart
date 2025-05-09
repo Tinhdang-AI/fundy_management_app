@@ -131,6 +131,21 @@ class ExpenseViewModel extends ChangeNotifier {
     Icons.auto_graph,
     Icons.currency_exchange,
     Icons.real_estate_agent,
+    Icons.receipt,
+    Icons.money,
+    Icons.wallet,
+    Icons.account_balance,
+    Icons.note,
+    Icons.insights,
+    Icons.pie_chart,
+    Icons.flag,
+    Icons.lock_clock,
+    Icons.settings,
+    Icons.history,
+    Icons.support_agent,
+    Icons.tips_and_updates,
+    Icons.label,
+    Icons.category,
   ];
 
   // Getters

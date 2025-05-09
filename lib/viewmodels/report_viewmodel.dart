@@ -39,7 +39,7 @@ class ReportViewModel extends ChangeNotifier {
   int _tabIndex = 0; // 0 for expenses, 1 for incomes
 
   // Colors for charts
-  final List<Color> _colors = [
+  final List<Color> _expensecolors = [
     Colors.red.shade400,
     Colors.blue.shade400,
     Colors.green.shade400,
@@ -51,6 +51,14 @@ class ReportViewModel extends ChangeNotifier {
     Colors.amber.shade400,
     Colors.cyan.shade400,
     Colors.brown.shade400,
+    Colors.lime.shade400,
+  ];
+
+  final List<Color> _incomecolors = [
+    Colors.lightGreen.shade400,
+    Colors.tealAccent.shade400,
+    Colors.blueGrey.shade400,
+    Colors.cyan.shade400,
     Colors.lime.shade400,
   ];
 
@@ -74,7 +82,8 @@ class ReportViewModel extends ChangeNotifier {
   double get incomeTotal => _incomeTotal;
   double get netTotal => _netTotal;
   int get tabIndex => _tabIndex;
-  List<Color> get colors => _colors;
+  List<Color> get expensecolors => _expensecolors;
+  List<Color> get incomecolors => _incomecolors;
 
   // Set context for localization
   void setContext(BuildContext context) {
@@ -406,15 +415,12 @@ class ReportViewModel extends ChangeNotifier {
 
   // Get color for expense category
   Color getExpenseColor(int index) {
-    return _colors[index % _colors.length];
+    return _expensecolors[index % _expensecolors.length];
   }
 
   // Get color for income category
   Color getIncomeColor(int index) {
-    // Use different shades of green for income
-    return index % 2 == 0
-        ? Colors.green.shade300.withOpacity(0.7 + (index * 0.05))
-        : Colors.teal.shade300.withOpacity(0.7 + (index * 0.05));
+    return _incomecolors[index % _incomecolors.length];
   }
 
   // Helper methods

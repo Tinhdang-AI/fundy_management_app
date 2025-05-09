@@ -232,7 +232,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                           style: TextStyle(
                             color: Colors.red,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -266,7 +266,7 @@ class _ReportScreenState extends State<ReportScreen> with SingleTickerProviderSt
                           style: TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),

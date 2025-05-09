@@ -93,7 +93,8 @@ class TransactionUtils {
     // Convert the amount from VND to current currency
     final double convertedAmount = convertFromVND(expense.amount);
     final TextEditingController amountController = TextEditingController(
-        text: formatCurrency.format(convertedAmount));
+        text: getCurrentCurrencyFormatter().format(convertedAmount));
+
 
     // Keep original date value
     DateTime selectedDate = expense.date;
@@ -161,18 +162,25 @@ class TransactionUtils {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // Display selected category
-                                Row(
-                                  children: [
-                                    Icon(
-                                      IconData(int.parse(selectedCategoryIcon), fontFamily: 'MaterialIcons'),
-                                      color: Colors.orange,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(selectedCategory,
-                                        style: TextStyle(fontSize: 16, color: Colors.black)
-                                    ),
-                                  ],
+                                // Display selected category with overflow handling
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        IconData(int.parse(selectedCategoryIcon), fontFamily: 'MaterialIcons'),
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          selectedCategory,
+                                          style: TextStyle(fontSize: 16, color: Colors.black),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 // Add icon to indicate it's tappable
                                 Icon(Icons.arrow_drop_down, color: Colors.black),
@@ -219,7 +227,7 @@ class TransactionUtils {
                           context: context,
                           initialDate: selectedDate,
                           firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(Duration(days: 30)),
+                          lastDate: DateTime.now().add(Duration(days: 365)),
                           builder: (context, child) {
                             return Theme(
                               data: ThemeData.light().copyWith(
@@ -325,7 +333,7 @@ class TransactionUtils {
 
     final filteredCategories = categoryList.where((category) =>
     category['isExpense'] == isExpense &&
-        category['name'] != context.tr('category_edit')
+        category['name'] != 'category_edit'
     ).toList();
 
     showDialog(
@@ -360,7 +368,12 @@ class TransactionUtils {
                     IconData(int.parse(category['icon']), fontFamily: 'MaterialIcons'),
                     color: Colors.orange,
                   ),
-                  title: Text(displayName, style: TextStyle(color: Colors.black)),
+                  title: Text(
+                    displayName,
+                    style: TextStyle(color: Colors.black),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                   selected: isSelected,
                   selectedTileColor: Colors.orange.shade50,
                   trailing: isSelected ? Icon(Icons.check, color: Colors.green) : null,

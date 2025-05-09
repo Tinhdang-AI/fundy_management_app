@@ -310,111 +310,123 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     List<Map<String, dynamic>> categories =
     selectedTab == 0 ? viewModel.expenseCategories : viewModel.incomeCategories;
 
-    return GridView.builder(
-      padding: EdgeInsets.only(bottom: 16, top: 4),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-      ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        bool isSelected = selectedCategoryLabel == categories[index]["label"];
-        bool isEditButton = categories[index]["labelKey"] == "category_edit";
-
-        return GestureDetector(
-          onTap: () {
-            if (isEditButton) {
-              viewModel.toggleEditMode();
-            } else {
-              setState(() {
-                selectedCategoryLabel = categories[index]["label"];
-                selectedCategoryKey = categories[index]["labelKey"]; // Store key for saving
-                selectedCategoryIcon = (categories[index]["icon"] as IconData).codePoint.toString();
-              });
-            }
-          },
-          child: AnimatedContainer(
-            duration: Duration(milliseconds: 250),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(
-                color: isSelected
-                    ? Color(0xFFFF8B55)
-                    : isEditButton
-                    ? Colors.grey[300]!
-                    : Colors.grey[200]!,
-                width: isSelected ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: isSelected
-                  ? [
-                BoxShadow(
-                  color: Color(0xFFFF8B55).withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                )
-              ]
-                  : [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                )
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Color(0xFFFF8B55).withOpacity(0.1)
-                        : isEditButton
-                        ? Colors.grey[100]
-                        : Colors.grey[50],
-                    shape: BoxShape.circle,
-                    boxShadow: isSelected
-                        ? [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                        offset: Offset(0, 2),
-                      )
-                    ]
-                        : null,
-                  ),
-                  child: Icon(
-                    categories[index]["icon"],
-                    size: 30,
-                    color: isSelected || isEditButton ? Color(0xFFFF8B55) : Colors.grey[600],
-                  ),
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    categories[index]["label"],
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.2,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected || isEditButton ? Color(0xFFFF8B55) : Colors.black87,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+    return Expanded(
+        child: GridView.builder(
+          padding: EdgeInsets.only(bottom: 8, top: 4),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 1,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
           ),
-        );
-      },
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            bool isSelected = selectedCategoryLabel ==
+                categories[index]["label"];
+            bool isEditButton = categories[index]["labelKey"] ==
+                "category_edit";
+
+            return GestureDetector(
+              onTap: () {
+                if (isEditButton) {
+                  viewModel.toggleEditMode();
+                } else {
+                  setState(() {
+                    selectedCategoryLabel = categories[index]["label"];
+                    selectedCategoryKey =
+                    categories[index]["labelKey"]; // Store key for saving
+                    selectedCategoryIcon =
+                        (categories[index]["icon"] as IconData).codePoint
+                            .toString();
+                  });
+                }
+              },
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 250),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: isSelected
+                        ? Color(0xFFFF8B55)
+                        : isEditButton
+                        ? Colors.grey[300]!
+                        : Colors.grey[200]!,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected
+                      ? [
+                    BoxShadow(
+                      color: Color(0xFFFF8B55).withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    )
+                  ]
+                      : [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    )
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Color(0xFFFF8B55).withOpacity(0.1)
+                            : isEditButton
+                            ? Colors.grey[100]
+                            : Colors.grey[50],
+                        shape: BoxShape.circle,
+                        boxShadow: isSelected
+                            ? [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                            offset: Offset(0, 2),
+                          )
+                        ]
+                            : null,
+                      ),
+                      child: Icon(
+                        categories[index]["icon"],
+                        size: 30,
+                        color: isSelected || isEditButton
+                            ? Color(0xFFFF8B55)
+                            : Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        categories[index]["label"],
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.2,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight
+                              .w500,
+                          color: isSelected || isEditButton
+                              ? Color(0xFFFF8B55)
+                              : Colors.black87,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        )
     );
   }
 
